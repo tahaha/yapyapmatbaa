@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+:root { --background: #f6f8f7; --foreground: #102331; --font-manrope: 'Manrope'; }
+@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --font-sans: var(--font-manrope); }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-manrope), Arial, Helvetica, sans-serif; }
+::selection { background: #17c964; color: #071b2b; }
+.hero-grid { background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px); background-size: 44px 44px; background-position: center top; }
+.hero-glow { background: rgba(23,201,100,.18); filter: blur(90px); }
+.cta-shine { position: relative; overflow: hidden; }
+.cta-shine::after { content: ''; position: absolute; inset: -80% auto -80% -35%; width: 22%; transform: rotate(20deg); background: rgba(255,255,255,.32); transition: left .55s ease; }
+.cta-shine:hover::after { left: 120%; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition-duration: .01ms !important; } }

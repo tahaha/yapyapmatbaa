@@ -1,63 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, BadgeCheck, Check, ChevronRight, CreditCard, FileText, Layers3, MapPin, MessageCircle, PackageCheck, Palette, Phone, Printer, Ruler, Send, Sparkles, Sticker, Truck, X } from 'lucide-react';
+import { formatPrice } from './data/productStore.js';
+import { useProducts } from './hooks/useProducts.js';
 
 const whatsappNumber = '905431109543';
 const generalMessage = 'Merhaba, YapyapMatbaa web sitenizden ulaşıyorum. Baskı hizmetleriniz hakkında bilgi almak istiyorum.';
 const createWhatsAppUrl = (message) => `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
 const generalWhatsAppUrl = createWhatsAppUrl(generalMessage);
 
-const products = [
-  {
-    id: 'tek-yonlu-kartvizit',
-    name: 'Tek Yönlü Kartvizit',
-    description: 'Markanızı sade ve profesyonel biçimde yansıtan, tek yüz baskılı klasik kartvizit.',
-    price: '550 TL',
-    quantity: 1000,
-    size: '8,3 x 5,1 cm',
-    printFeatures: ['350 gr. Mat Kuşe', 'Tek yön renkli baskı', 'Ücretsiz tasarım desteği'],
-    icon: CreditCard,
-  },
-  {
-    id: 'cift-yonlu-kartvizit',
-    name: 'Çift Yönlü Kartvizit',
-    description: 'İletişim ve marka bilgilerinize daha fazla alan sağlayan, çift yüz baskılı kartvizit.',
-    price: '700 TL',
-    quantity: 1000,
-    size: '8,3 x 5,1 cm',
-    printFeatures: ['350 gr. Mat Kuşe', 'Çift yön renkli baskı', 'Ücretsiz tasarım desteği'],
-    icon: CreditCard,
-  },
-  {
-    id: 'etiket',
-    name: 'Etiket',
-    description: 'Paket, ürün ve marka uygulamalarında kullanabileceğiniz canlı renkli kuşe çıkartma.',
-    price: '600 TL',
-    quantity: 1000,
-    size: '8,3 x 5,1 cm',
-    printFeatures: ['90 gr. Kuşe Çıkartma', 'Renkli baskı', 'Ücretsiz tasarım desteği'],
-    icon: Sticker,
-  },
-  {
-    id: 'magnet',
-    name: 'Magnet',
-    description: 'Markanızı müşterilerinizin göz önünde tutan, oval kesimli ve renkli tanıtım magneti.',
-    price: '1.000 TL',
-    quantity: 1000,
-    size: '6,7 x 4,6 cm',
-    printFeatures: ['4 renk baskı', 'Oval kesim', 'Ücretsiz tasarım desteği'],
-    icon: PackageCheck,
-  },
-  {
-    id: 'brosur',
-    name: 'Broşür',
-    description: 'Kampanya, hizmet ve ürünlerinizi etkili biçimde anlatabileceğiniz A5 tanıtım broşürü.',
-    price: '1.300 TL',
-    quantity: 1000,
-    size: '14 x 20 cm (A5)',
-    printFeatures: ['A5 ebat', 'Renkli baskı', 'Ücretsiz tasarım desteği'],
-    icon: FileText,
-  },
-];
 const steps = [
   { number: '01', title: 'Bize ulaşın', text: 'WhatsApp’tan bize ulaşın ve bilgilerinizi gönderin.', icon: MessageCircle },
   { number: '02', title: 'Tasarımı onaylayın', text: 'Ücretsiz tasarım desteğimizle taslağınızı hazırlayıp onayınıza sunalım.', icon: Palette },
@@ -68,10 +18,20 @@ function Logo() {
   return <a href="#top" className="group flex items-center gap-2.5" aria-label="Yapyapmatbaa ana sayfa"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#17c964] text-[#071b2b] shadow-[0_7px_20px_rgba(23,201,100,.24)] transition-transform group-hover:-rotate-3"><Printer size={21} strokeWidth={2.4} /></span><span className="text-[17px] font-extrabold tracking-[-0.04em] text-white">yapyap<span className="text-[#54e98f]">matbaa</span></span></a>;
 }
 
+function getProductIcon(product) {
+  const category = product.category.toLocaleLowerCase('tr-TR');
+  if (category.includes('kartvizit')) return CreditCard;
+  if (category.includes('etiket')) return Sticker;
+  if (category.includes('broşür') || category.includes('brosur')) return FileText;
+  return PackageCheck;
+}
+
 export default function Home() {
+  const products = useProducts();
+  const activeProducts = products.filter((product) => product.active);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const detailsRef = useRef(null);
-  const selectedProduct = products.find((product) => product.id === selectedProductId) ?? null;
+  const selectedProduct = activeProducts.find((product) => product.id === selectedProductId) ?? null;
 
   useEffect(() => {
     if (selectedProduct) {
@@ -100,8 +60,8 @@ export default function Home() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((product, index) => {
-            const Icon = product.icon;
+          {activeProducts.map((product) => {
+            const Icon = getProductIcon(product);
             const isSelected = product.id === selectedProductId;
             return (
               <button
@@ -110,7 +70,7 @@ export default function Home() {
                 onClick={() => setSelectedProductId(product.id)}
                 aria-expanded={isSelected}
                 aria-controls="urun-detayi"
-                className={`group relative w-full overflow-hidden rounded-3xl border bg-white p-6 text-left shadow-[0_10px_35px_rgba(7,27,43,.05)] transition duration-300 hover:-translate-y-1.5 hover:border-[#17c964]/50 hover:shadow-[0_18px_45px_rgba(7,27,43,.09)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#17c964]/25 ${isSelected ? 'border-[#17c964] ring-4 ring-[#17c964]/10' : 'border-slate-200/80'} ${index === 4 ? 'sm:col-span-2 lg:col-span-1' : ''}`}
+                className={`group relative w-full overflow-hidden rounded-3xl border bg-white p-6 text-left shadow-[0_10px_35px_rgba(7,27,43,.05)] transition duration-300 hover:-translate-y-1.5 hover:border-[#17c964]/50 hover:shadow-[0_18px_45px_rgba(7,27,43,.09)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#17c964]/25 ${isSelected ? 'border-[#17c964] ring-4 ring-[#17c964]/10' : 'border-slate-200/80'}`}
               >
                 <div className="mb-7 flex items-start justify-between">
                   <span className={`grid h-12 w-12 place-items-center rounded-2xl transition-colors ${isSelected ? 'bg-[#17c964] text-[#071b2b]' : 'bg-[#edf9f2] text-[#11984b] group-hover:bg-[#17c964] group-hover:text-[#071b2b]'}`}>
@@ -123,7 +83,7 @@ export default function Home() {
                 <div className="mt-5 flex items-end justify-between border-t border-slate-100 pt-5">
                   <div>
                     <p className="text-xs font-semibold text-slate-400">Başlangıç fiyatı</p>
-                    <p className="mt-1 text-3xl font-black tracking-[-0.05em] text-[#071b2b]">{product.price}</p>
+                    <p className="mt-1 text-3xl font-black tracking-[-0.05em] text-[#071b2b]">{formatPrice(product.price)}</p>
                   </div>
                   <span aria-hidden="true" className={`grid h-10 w-10 place-items-center rounded-full transition ${isSelected ? 'rotate-90 bg-[#17c964] text-[#071b2b]' : 'bg-[#071b2b] text-white group-hover:bg-[#17c964] group-hover:text-[#071b2b]'}`}>
                     <ChevronRight size={20} />
@@ -133,6 +93,14 @@ export default function Home() {
             );
           })}
         </div>
+
+        {activeProducts.length === 0 && (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+            <PackageCheck className="mx-auto text-slate-300" size={34} />
+            <h3 className="mt-4 text-lg font-extrabold text-[#102331]">Ürünler güncelleniyor</h3>
+            <p className="mt-2 text-sm text-slate-500">Aktif ürünler kısa süre içinde burada görüntülenecek.</p>
+          </div>
+        )}
 
         {selectedProduct && (
           <article ref={detailsRef} id="urun-detayi" className="mt-6 overflow-hidden rounded-[2rem] border border-[#17c964]/25 bg-[#071b2b] text-white shadow-[0_22px_60px_rgba(7,27,43,.14)]">
@@ -151,7 +119,7 @@ export default function Home() {
                 <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-white/[.055] p-4">
                     <p className="text-xs font-semibold text-slate-400">Fiyat</p>
-                    <p className="mt-1 text-xl font-black text-[#54e98f]">{selectedProduct.price}</p>
+                    <p className="mt-1 text-xl font-black text-[#54e98f]">{formatPrice(selectedProduct.price)}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/[.055] p-4">
                     <p className="text-xs font-semibold text-slate-400">Adet</p>

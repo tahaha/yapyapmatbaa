@@ -1,93 +1,63 @@
 import { defaultProducts } from './products.js';
 
-const STORAGE_KEY = 'yapyapmatbaa_products_v1';
-const CHANGE_EVENT = 'yapyapmatbaa-products-changed';
+const storageKey = 'yapyapmatbaa_products_v2';
+const eventName = 'yapyapmatbaa-products-changed';
 
-const cloneDefaults = () => defaultProducts.map((product) => ({
-  ...product,
-  printFeatures: [...product.printFeatures],
-}));
+const clone = (value) => JSON.parse(JSON.stringify(value));
+const slugify = (value) => String(value || 'urun').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
-const normalizeProduct = (product) => ({
-  ...product,
-  name: product.name || 'İsimsiz Ürün',
-  category: product.category || 'Diğer',
-  description: product.description || '',
-  size: product.size || '',
-  price: Number(product.price) || 0,
-  quantity: Number(product.quantity) || 0,
-  printFeatures: Array.isArray(product.printFeatures) ? product.printFeatures.filter(Boolean) : [],
-  active: product.active !== false,
-  createdAt: product.createdAt || new Date().toISOString(),
-});
+function normalizeProduct(product) {
+  const variants = Array.isArray(product.variants) && product.variants.length
+    ? product.variants
+    : [{ id: 'standart', size: product.size || '-', quantity: Number(product.quantity) || 1000, paper: product.printFeatures?.[0] || '-', printing: product.printFeatures?.[1] || '-', finish: product.printFeatures?.[2] || 'Selefonsuz', cut: product.printFeatures?.[3] || 'Düz Kesim', price: Number(product.price) || 0 }];
+  const normalizedVariants = variants.map((variant, index) => ({ ...variant, id: variant.id || `varyant-${index + 1}`, quantity: Number(variant.quantity) || 1, price: Number(variant.price) || 0 }));
+  const first = normalizedVariants[0];
+  return {
+    ...product,
+    id: String(product.id || `${slugify(product.name)}-${Date.now()}`),
+    slug: product.slug || slugify(product.name),
+    image: product.image || 'og.png',
+    features: Array.isArray(product.features) ? product.features : (product.printFeatures || []),
+    variants: normalizedVariants,
+    price: Math.min(...normalizedVariants.map((variant) => variant.price)),
+    quantity: first.quantity,
+    size: first.size,
+    printFeatures: [first.paper, first.printing, first.finish, first.cut].filter(Boolean),
+    active: product.active !== false,
+    createdAt: product.createdAt || new Date().toISOString(),
+  };
+}
 
 export function getProducts() {
+  if (typeof window === 'undefined') return clone(defaultProducts).map(normalizeProduct);
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      const initialProducts = cloneDefaults();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialProducts));
-      return initialProducts;
-    }
-    const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed.map(normalizeProduct) : cloneDefaults();
+    const stored = JSON.parse(localStorage.getItem(storageKey));
+    return (Array.isArray(stored) ? stored : clone(defaultProducts)).map(normalizeProduct);
   } catch {
-    return cloneDefaults();
+    return clone(defaultProducts).map(normalizeProduct);
   }
 }
 
 function saveProducts(products) {
-  const normalizedProducts = products.map(normalizeProduct);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizedProducts));
-  window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
-  return normalizedProducts;
+  localStorage.setItem(storageKey, JSON.stringify(products.map(normalizeProduct)));
+  window.dispatchEvent(new CustomEvent(eventName));
 }
 
-function createId(name) {
-  const slug = name
-    .toLocaleLowerCase('tr-TR')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/ı/g, 'i')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-  return `${slug || 'urun'}-${Date.now().toString(36)}`;
+export function subscribeToProducts(callback) {
+  const update = () => callback(getProducts());
+  window.addEventListener(eventName, update);
+  window.addEventListener('storage', update);
+  return () => { window.removeEventListener(eventName, update); window.removeEventListener('storage', update); };
 }
 
 export const productRepository = {
-  list: getProducts,
-  create(product) {
-    const products = getProducts();
-    const newProduct = normalizeProduct({ ...product, id: createId(product.name), createdAt: new Date().toISOString() });
-    saveProducts([newProduct, ...products]);
-    return newProduct;
-  },
-  update(id, updates) {
-    return saveProducts(getProducts().map((product) => (
-      product.id === id ? normalizeProduct({ ...product, ...updates, id: product.id, createdAt: product.createdAt }) : product
-    )));
-  },
-  remove(id) {
-    return saveProducts(getProducts().filter((product) => product.id !== id));
-  },
-  toggleActive(id) {
-    return saveProducts(getProducts().map((product) => (
-      product.id === id ? { ...product, active: !product.active } : product
-    )));
-  },
+  create(product) { const products = getProducts(); saveProducts([...products, normalizeProduct(product)]); },
+  update(id, updates) { saveProducts(getProducts().map((product) => product.id === id ? normalizeProduct({ ...product, ...updates, id }) : product)); },
+  remove(id) { saveProducts(getProducts().filter((product) => product.id !== id)); },
+  toggleActive(id) { saveProducts(getProducts().map((product) => product.id === id ? { ...product, active: !product.active } : product)); },
+  reset() { saveProducts(clone(defaultProducts)); },
 };
 
-export function subscribeToProducts(callback) {
-  const handleChange = (event) => {
-    if (!event.key || event.key === STORAGE_KEY) callback(getProducts());
-  };
-  const handleCustomChange = () => callback(getProducts());
-  window.addEventListener('storage', handleChange);
-  window.addEventListener(CHANGE_EVENT, handleCustomChange);
-  return () => {
-    window.removeEventListener('storage', handleChange);
-    window.removeEventListener(CHANGE_EVENT, handleCustomChange);
-  };
-}
+export const getStartingPrice = (product) => Math.min(...product.variants.map((variant) => Number(variant.price)));
+export const formatPrice = (price) => `${new Intl.NumberFormat('tr-TR').format(Number(price))} TL`;
 
-export const formatPrice = (price) => `${new Intl.NumberFormat('tr-TR').format(Number(price) || 0)} TL`;

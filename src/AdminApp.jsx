@@ -58,11 +58,23 @@ function ProductForm({ product, onCancel, onSave }) {
   const updateField = (field, value) => setForm((current) => ({ ...current, [field]: value }));
   const handleSubmit = (event) => {
     event.preventDefault();
+    const printFeatures = featuresText.split('\n').map((feature) => feature.trim()).filter(Boolean);
+    const variants = form.variants?.length ? form.variants.map((variant, index) => index === 0 ? {
+      ...variant,
+      price: Number(form.price),
+      quantity: Number(form.quantity),
+      size: form.size,
+      paper: printFeatures[0] || variant.paper,
+      printing: printFeatures[1] || variant.printing,
+      finish: printFeatures[2] || variant.finish,
+      cut: printFeatures[3] || variant.cut,
+    } : variant) : undefined;
     onSave({
       ...form,
       price: Number(form.price),
       quantity: Number(form.quantity),
-      printFeatures: featuresText.split('\n').map((feature) => feature.trim()).filter(Boolean),
+      printFeatures,
+      ...(variants ? { variants } : {}),
     });
   };
 
@@ -74,7 +86,7 @@ function ProductForm({ product, onCancel, onSave }) {
       <label className="text-sm font-bold text-[#102331]">Adet<input type="number" min="1" value={form.quantity} onChange={(event) => updateField('quantity', event.target.value)} className={fieldClass} required /></label>
       <label className="text-sm font-bold text-[#102331] md:col-span-2">Ölçü<input value={form.size} onChange={(event) => updateField('size', event.target.value)} className={fieldClass} placeholder="8,3 x 5,1 cm" required /></label>
       <label className="text-sm font-bold text-[#102331] md:col-span-2">Açıklama<textarea rows="4" value={form.description} onChange={(event) => updateField('description', event.target.value)} className={fieldClass} required /></label>
-      <label className="text-sm font-bold text-[#102331] md:col-span-2">Baskı özellikleri<textarea rows="5" value={featuresText} onChange={(event) => setFeaturesText(event.target.value)} className={fieldClass} placeholder={'Her özelliği ayrı satıra yazın\n350 gr. Mat Kuşe\nÇift yön renkli baskı'} required /><span className="mt-2 block text-xs font-medium text-slate-400">Her satır ana sayfada ayrı bir özellik olarak gösterilir.</span></label>
+      <label className="text-sm font-bold text-[#102331] md:col-span-2">Baskı özellikleri<textarea rows="5" value={featuresText} onChange={(event) => setFeaturesText(event.target.value)} className={fieldClass} placeholder={'Her özelliği ayrı satıra yazın\n350 gr. Mat Kuşe\nÇift yön renkli baskı'} required /><span className="mt-2 block text-xs font-medium text-slate-400">Sırasıyla kağıt, baskı, yüzey ve kesim bilgilerini yazın. Çoklu varyasyonlu ürünlerde bu form ilk varyasyonu günceller.</span></label>
       <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2"><input type="checkbox" checked={form.active} onChange={(event) => updateField('active', event.target.checked)} className="h-5 w-5 accent-[#17c964]" /><span><span className="block text-sm font-extrabold text-[#102331]">Ürün aktif</span><span className="mt-0.5 block text-xs text-slate-500">Aktif ürünler ana sayfada görüntülenir.</span></span></label>
     </div>
     <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

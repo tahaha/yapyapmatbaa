@@ -1,83 +1,61 @@
-# Yapyapmatbaa
+# Yapyapmatbaa — GitHub Pages Sürümü
 
-Yapyapmatbaa için hazırlanmış modern, hızlı ve mobil uyumlu bir tanıtım web sitesidir. Proje; baskı hizmetlerini, ürün fiyatlarını ve sipariş sürecini sade ve anlaşılır bir arayüz üzerinden ziyaretçilere sunmak amacıyla geliştirilmiştir.
+Bu klasör bağımsız bir React + Vite + Tailwind CSS projesidir. Ana projeye veya OpenAI Sites altyapısına ihtiyaç duymaz.
 
-## Proje Hakkında
+## GitHub'a yükleme
 
-Web sitesi, müşterilerin sunulan baskı ürünlerini ve fiyatlarını kolayca inceleyebilmesini, çalışma süreci hakkında bilgi alabilmesini ve ihtiyaç duyduklarında doğrudan WhatsApp üzerinden iletişime geçebilmesini sağlar.
+1. GitHub'da boş bir repository oluşturun.
+2. Bu klasörün **içindeki tüm dosya ve klasörleri** repository'nin kök dizinine yükleyin. `githubpublish` klasörünü üst klasör olarak yüklemeyin.
+3. Varsayılan dalın adının `main` olduğundan emin olun.
+4. Repository içinde **Settings → Pages** sayfasını açın.
+5. **Build and deployment → Source** alanını **GitHub Actions** olarak seçin. GitHub'ın hazır Jekyll veya "Deploy static content" şablonlarını oluşturmayın; projeyle birlikte gelen `.github/workflows/static.yml` kullanılmalıdır.
+6. `main` dalına yapılan her gönderimden sonra site otomatik olarak derlenip yayınlanır.
 
-Tasarımda sade bir kullanıcı deneyimi, güçlü tipografi ve Yapyapmatbaa'nın kurumsal kimliğine uygun koyu lacivert ve yeşil renk paleti tercih edilmiştir.
+Yayın tamamlandığında adresiniz genellikle şu biçimde olur:
 
-## Özellikler
+`https://KULLANICI-ADINIZ.github.io/REPOSITORY-ADINIZ/`
 
-* Modern ve responsive arayüz
-* Mobil, tablet ve masaüstü ekranlara uyumlu tasarım
-* Ürün ve fiyat kartları
-* Kartvizit, etiket, magnet ve broşür hizmetlerinin tanıtımı
-* Üç adımlı sipariş süreci
-* Ücretsiz tasarım desteğinin vurgulanması
-* Doğrudan WhatsApp iletişimi
-* Mobil cihazlar için sabit WhatsApp butonu
-* İletişim, üretim yeri ve kargo bilgilerinin sunulması
-* Hafif animasyonlar ve etkileşimli arayüz öğeleri
-* Sosyal medya paylaşım görseli ve meta etiketleri
+## Bilgisayarda çalıştırma
 
-## Sunulan Hizmetler
+Node.js 22 ve pnpm kurulu olmalıdır.
 
-| Ürün                 | Adet | Başlangıç Fiyatı |
-| -------------------- | ---: | ---------------: |
-| Tek Yönlü Kartvizit  | 1000 |           550 TL |
-| Çift Yönlü Kartvizit | 1000 |           700 TL |
-| Etiket               | 1000 |           600 TL |
-| Magnet               | 1000 |         1.000 TL |
-| Broşür               | 1000 |         1.300 TL |
-
-Tüm ürünlerde tasarım desteği ücretsiz olarak sunulmaktadır.
-
-## Nasıl Çalışır?
-
-**1. Bize Ulaşın**
-Müşteri WhatsApp üzerinden iletişime geçerek ihtiyacını ve gerekli bilgileri paylaşır.
-
-**2. Tasarımı Onaylayın**
-Gönderilen bilgiler doğrultusunda tasarım hazırlanır ve müşterinin onayına sunulur.
-
-**3. Kapınıza Gelsin**
-Onaylanan çalışma baskıya alınır ve kargo ile müşteriye gönderilir.
-
-## Kullanılan Teknolojiler
-
-* React
-* Vite
-* Tailwind CSS
-* Lucide React
-
-## Proje Yapısı
-
-```text
-src/
-├── App.jsx        # Ana sayfa ve içerikler
-├── index.css      # Genel stiller ve görsel efektler
-└── main.jsx       # React başlangıç noktası
-
-public/
-└── og.png         # Sosyal medya paylaşım görseli
-
-index.html         # Sayfa ve meta bilgileri
-vite.config.js     # Vite yapılandırması
+```bash
+pnpm install
+pnpm dev
 ```
 
-## Tasarım
+Üretim derlemesi:
 
-Projenin arayüzünde ziyaretçinin doğrudan hizmetlere ve iletişim seçeneklerine yönlendirilmesi amaçlanmıştır.
+```bash
+pnpm build
+pnpm preview
+```
 
-Ana sayfa sırasıyla:
+## Ürün sayfaları
 
-**Tanıtım → Hizmetler → Çalışma Süreci → İletişim**
+- Tüm ürünler: `/urunler/`
+- Ürün detayları: `/urunler/kartvizit/`, `/urunler/brosur/`, `/urunler/magnet/`, `/urunler/cikartma-etiket/`, `/urunler/el-ilani/`, `/urunler/afis/`
 
-akışını takip eder. Böylece ziyaretçi, Yapyapmatbaa'nın sunduğu hizmetleri hızlıca anlayabilir, fiyatları inceleyebilir ve WhatsApp üzerinden teklif isteyebilir.
+Ürün kartları tek tek fiyat satırları yerine kategori olarak gösterilir. Ebat, adet, model ve diğer üretim seçenekleri detay sayfasında varyasyon olarak seçilir; fiyat ve WhatsApp sipariş mesajı otomatik güncellenir.
 
----
+## İçerik düzenleme
 
-**Yapyapmatbaa**
-Markanızı yansıtan, akılda kalıcı kartvizit ve baskı tasarımları.
+- Ürünler, fiyatlar ve varyasyonlar: `src/data/products.js`
+- WhatsApp numarası ve genel mesaj: `src/config/contact.js`
+- Ana sayfa metinleri: `src/App.jsx`
+- Renkler ve özel görsel efektler: `src/index.css`
+- Sayfa başlığı ve sosyal medya meta etiketleri: `index.html`
+- Sosyal paylaşım görseli: `public/og.png`
+
+## Yönetim paneli
+
+Yayınlanan sitenin `/admin/` adresinden yönetim paneline ulaşabilirsiniz.
+
+- Kullanıcı adı: `admin`
+- Şifre: `yapyap2026`
+
+Ürün ekleme, düzenleme, silme ve aktif/pasif yapma işlemleri tarayıcının yerel depolama alanında saklanır. Bu geçici yapı backend gerektirmez ve aynı tarayıcıdaki ana sayfaya otomatik yansır. Farklı cihazlarda ortak yönetim ve güvenli giriş için ileride gerçek API, veritabanı ve sunucu tabanlı authentication eklenmelidir.
+
+Başlangıç ürünleri `src/data/products.js`, veri işlemleri ise `src/data/productStore.js` üzerinden yönetilir. Ürün görsellerini değiştirmek için ilgili ürünün `image` alanına `public` klasöründeki yeni dosyanın adını yazın.
+
+Repository adresiniz kesinleştikten sonra `index.html` içindeki `og:image` ve `twitter:image` adreslerini kendi GitHub Pages adresinizle değiştirebilirsiniz. Mevcut değer çalışan canlı görseli kullanır.

@@ -2,15 +2,20 @@ import { useEffect, useState } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
+  Award,
+  BarChart3,
   Check,
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Clock,
   Download,
   Eye,
   EyeOff,
+  Folder,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Package,
   Pencil,
   Plus,
@@ -18,7 +23,12 @@ import {
   Printer,
   RotateCcw,
   Save,
+  Star,
+  Tag,
   Trash2,
+  TrendingDown,
+  TrendingUp,
+  Truck,
 } from 'lucide-react';
 import {
   adminSessionKey,
@@ -26,6 +36,19 @@ import {
   isAdminConfigured,
   verifyAdminPassword,
 } from './config/admin.js';
+import {
+  campaignRepository,
+  getActiveCampaigns,
+  getCampaigns,
+  subscribeToCampaigns,
+} from './data/campaignStore.js';
+import {
+  categoryRepository,
+  getActiveCategories,
+  getCategories,
+  subscribeToCategories,
+} from './data/categoryStore.js';
+import { getPriceHistory, subscribeToPriceHistory } from './data/priceHistoryStore.js';
 import {
   downloadProductsJs,
   formatPrice,
@@ -45,8 +68,14 @@ const fieldClass =
 
 const labelClass = 'block text-sm font-bold text-[#102331]';
 
+const btnPrimary =
+  'flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#17c964] px-5 py-2.5 text-sm font-extrabold text-[#061c13] transition hover:bg-[#21d970]';
+
+const btnSecondary =
+  'min-h-11 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50';
+
 // ---------------------------------------------------------------------------
-// Boş varyant şablonu
+// Bos varyant sablonu
 // ---------------------------------------------------------------------------
 const newVariant = () => ({
   id: `v-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -61,14 +90,6 @@ const newVariant = () => ({
   image: '',
   active: true,
 });
-
-const emptyProduct = {
-  name: '',
-  category: '',
-  description: '',
-  image: '',
-  active: true,
-};
 
 // ---------------------------------------------------------------------------
 // Logo
@@ -87,7 +108,7 @@ function AdminLogo() {
 }
 
 // ---------------------------------------------------------------------------
-// Giriş ekranı
+// Giris ekrani
 // ---------------------------------------------------------------------------
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -106,10 +127,10 @@ function Login({ onLogin }) {
         sessionStorage.setItem(adminSessionKey, 'authenticated');
         onLogin();
       } else {
-        setError('Kullanıcı adı veya şifre hatalı.');
+        setError('Kullanici adi veya sifre hatali.');
       }
     } catch {
-      setError('Giriş sırasında bir hata oluştu. Tarayıcı güvenlik politikasını kontrol edin.');
+      setError('Giris sirasinda bir hata olustu. Tarayici guvenlik politikasini kontrol edin.');
     } finally {
       setLoading(false);
     }
@@ -120,12 +141,12 @@ function Login({ onLogin }) {
       <main className="hero-grid grid min-h-screen place-items-center bg-[#071b2b] px-5 py-10 text-white">
         <section className="w-full max-w-md rounded-[2rem] border border-red-400/20 bg-red-400/10 p-8 text-center">
           <AlertCircle className="mx-auto text-red-300" size={40} />
-          <h1 className="mt-4 text-2xl font-black text-white">Admin Yapılandırılmamış</h1>
+          <h1 className="mt-4 text-2xl font-black text-white">Admin Yapilandirilmamis</h1>
           <p className="mt-3 text-sm leading-6 text-red-200">
             <code className="rounded bg-red-400/20 px-1.5 py-0.5 font-mono">VITE_ADMIN_PASSWORD_HASH</code> ortam
-            değişkeni ayarlanmamış. <br />
-            Projenin kök dizinindeki <code className="rounded bg-red-400/20 px-1.5 py-0.5 font-mono">.env</code>{' '}
-            dosyasını kontrol edin.
+            degiskeni ayarlanmamis. <br />
+            Projenin kok dizinindeki <code className="rounded bg-red-400/20 px-1.5 py-0.5 font-mono">.env</code>{' '}
+            dosyasini kontrol edin.
           </p>
         </section>
       </main>
@@ -136,12 +157,12 @@ function Login({ onLogin }) {
     <main className="hero-grid grid min-h-screen place-items-center bg-[#071b2b] px-5 py-10 text-white">
       <section className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/[.065] p-6 shadow-2xl backdrop-blur sm:p-9">
         <AdminLogo />
-        <p className="mt-9 text-xs font-black uppercase tracking-[.18em] text-[#54e98f]">Yönetim paneli</p>
-        <h1 className="mt-2 text-3xl font-black tracking-[-0.045em]">Hoş geldiniz</h1>
-        <p className="mt-3 text-sm leading-6 text-slate-300">Ürün ve fiyat bilgilerini yönetmek için giriş yapın.</p>
+        <p className="mt-9 text-xs font-black uppercase tracking-[.18em] text-[#54e98f]">Yonetim paneli</p>
+        <h1 className="mt-2 text-3xl font-black tracking-[-0.045em]">Hos geldiniz</h1>
+        <p className="mt-3 text-sm leading-6 text-slate-300">Urun ve fiyat bilgilerini yonetmek icin giris yapin.</p>
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <label className="block text-sm font-bold">
-            Kullanıcı adı
+            Kullanici adi
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -151,7 +172,7 @@ function Login({ onLogin }) {
             />
           </label>
           <label className="block text-sm font-bold">
-            Şifre
+            Sifre
             <span className="relative block">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -164,7 +185,7 @@ function Login({ onLogin }) {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                aria-label={showPassword ? 'Sifreyi gizle' : 'Sifreyi goster'}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
               >
                 {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
@@ -181,11 +202,11 @@ function Login({ onLogin }) {
             disabled={loading}
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#17c964] px-5 py-3 font-extrabold text-[#061c13] transition hover:bg-[#21d970] disabled:opacity-60"
           >
-            {loading ? 'Doğrulanıyor…' : <>Giriş Yap <ChevronRight size={18} /></>}
+            {loading ? 'Dogrulaniyor...' : <>Giris Yap <ChevronRight size={18} /></>}
           </button>
         </form>
         <p className="mt-6 text-center text-xs leading-5 text-slate-500">
-          Bu panel istemci tarafı SHA-256 doğrulaması kullanır. Gerçek güvenlik için backend gereklidir.
+          Bu panel istemci tarafi SHA-256 dogrulamasi kullanir. Gercek guvenlik icin backend gereklidir.
         </p>
       </section>
     </main>
@@ -193,7 +214,7 @@ function Login({ onLogin }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tek varyant editörü
+// Tek varyant editoru
 // ---------------------------------------------------------------------------
 function VariantEditor({ variant, index, total, onChange, onDelete }) {
   const [expanded, setExpanded] = useState(index === 0);
@@ -201,7 +222,6 @@ function VariantEditor({ variant, index, total, onChange, onDelete }) {
 
   return (
     <div className={`rounded-2xl border ${variant.active !== false ? 'border-slate-200 bg-slate-50' : 'border-dashed border-slate-200 bg-slate-50/60 opacity-70'}`}>
-      {/* Başlık satırı */}
       <div
         className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 select-none"
         onClick={() => setExpanded((v) => !v)}
@@ -222,11 +242,8 @@ function VariantEditor({ variant, index, total, onChange, onDelete }) {
           {total > 1 && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              aria-label="Varyantı sil"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              aria-label="Varyanti sil"
               className="grid h-7 w-7 place-items-center rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600"
             >
               <Trash2 size={14} />
@@ -236,13 +253,12 @@ function VariantEditor({ variant, index, total, onChange, onDelete }) {
         </div>
       </div>
 
-      {/* Genişletilmiş içerik */}
       {expanded && (
         <div className="border-t border-slate-200 p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={labelClass}>
-              Model / İsim
-              <input value={variant.model} onChange={(e) => update('model', e.target.value)} className={fieldClass} placeholder="Standart Düz Kesim" />
+              Model / Isim
+              <input value={variant.model} onChange={(e) => update('model', e.target.value)} className={fieldClass} placeholder="Standart Duz Kesim" />
             </label>
             <label className={labelClass}>
               Fiyat (TL)
@@ -250,30 +266,30 @@ function VariantEditor({ variant, index, total, onChange, onDelete }) {
             </label>
             <label className={labelClass}>
               Ebat
-              <input value={variant.size} onChange={(e) => update('size', e.target.value)} className={fieldClass} placeholder="8,3 × 5,1 cm" />
+              <input value={variant.size} onChange={(e) => update('size', e.target.value)} className={fieldClass} placeholder="8,3 x 5,1 cm" />
             </label>
             <label className={labelClass}>
               Adet
               <input type="number" min="1" value={variant.quantity} onChange={(e) => update('quantity', e.target.value)} className={fieldClass} />
             </label>
             <label className={labelClass}>
-              Kağıt
-              <input value={variant.paper} onChange={(e) => update('paper', e.target.value)} className={fieldClass} placeholder="350 gr Mat Kuşe" />
+              Kagit
+              <input value={variant.paper} onChange={(e) => update('paper', e.target.value)} className={fieldClass} placeholder="350 gr Mat Kuse" />
             </label>
             <label className={labelClass}>
-              Baskı
-              <input value={variant.printing} onChange={(e) => update('printing', e.target.value)} className={fieldClass} placeholder="Ön 4 Renk / Arka 4 Renk" />
+              Baski
+              <input value={variant.printing} onChange={(e) => update('printing', e.target.value)} className={fieldClass} placeholder="On 4 Renk / Arka 4 Renk" />
             </label>
             <label className={labelClass}>
-              Yüzey
+              Yuzey
               <input value={variant.finish} onChange={(e) => update('finish', e.target.value)} className={fieldClass} placeholder="Mat Selefon + Kabartma Lak" />
             </label>
             <label className={labelClass}>
               Kesim
-              <input value={variant.cut} onChange={(e) => update('cut', e.target.value)} className={fieldClass} placeholder="Düz Kesim" />
+              <input value={variant.cut} onChange={(e) => update('cut', e.target.value)} className={fieldClass} placeholder="Duz Kesim" />
             </label>
             <label className={`${labelClass} sm:col-span-2`}>
-              Varyant görseli (opsiyonel — boşsa ürün görseli kullanılır)
+              Varyant gorseli (opsiyonel)
               <input
                 value={variant.image || ''}
                 onChange={(e) => update('image', e.target.value)}
@@ -290,7 +306,7 @@ function VariantEditor({ variant, index, total, onChange, onDelete }) {
               />
               <span>
                 <span className="block text-sm font-extrabold text-[#102331]">Varyant aktif</span>
-                <span className="mt-0.5 block text-xs text-slate-500">Pasif varyantlar müşteri tarafında gizlenir.</span>
+                <span className="mt-0.5 block text-xs text-slate-500">Pasif varyantlar musteri tarafinda gizlenir.</span>
               </span>
             </label>
           </div>
@@ -301,15 +317,21 @@ function VariantEditor({ variant, index, total, onChange, onDelete }) {
 }
 
 // ---------------------------------------------------------------------------
-// Ürün formu (ekle / düzenle)
+// Urun formu (ekle / duzenle) — Guncellenms: kategori, featured, bestSeller, deliveryTime
 // ---------------------------------------------------------------------------
 function ProductForm({ product, onCancel, onSave }) {
+  const categories = getActiveCategories();
+
   const [form, setForm] = useState(() => ({
     name: product?.name || '',
     category: product?.category || '',
+    categoryId: product?.categoryId || '',
     description: product?.description || '',
     image: product?.image || '',
     active: product?.active !== false,
+    featured: product?.featured === true,
+    bestSeller: product?.bestSeller === true,
+    deliveryTime: product?.deliveryTime || '2-3 Is Gunu',
   }));
 
   const [variants, setVariants] = useState(() =>
@@ -322,9 +344,13 @@ function ProductForm({ product, onCancel, onSave }) {
     setForm({
       name: product?.name || '',
       category: product?.category || '',
+      categoryId: product?.categoryId || '',
       description: product?.description || '',
       image: product?.image || '',
       active: product?.active !== false,
+      featured: product?.featured === true,
+      bestSeller: product?.bestSeller === true,
+      deliveryTime: product?.deliveryTime || '2-3 Is Gunu',
     });
     setVariants(
       product?.variants?.length
@@ -338,6 +364,12 @@ function ProductForm({ product, onCancel, onSave }) {
     setVariants((vs) => vs.map((v, i) => (i === index ? updated : v)));
   const addVariant = () => setVariants((vs) => [...vs, newVariant()]);
   const removeVariant = (index) => setVariants((vs) => vs.filter((_, i) => i !== index));
+
+  const handleCategoryChange = (catId) => {
+    const cat = categories.find((c) => c.id === catId);
+    updateField('categoryId', catId);
+    if (cat) updateField('category', cat.name);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -358,23 +390,31 @@ function ProductForm({ product, onCancel, onSave }) {
 
   return (
     <form onSubmit={handleSubmit} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_12px_35px_rgba(7,27,43,.05)] sm:p-7">
-      {/* Ürün bilgileri */}
-      <h2 className="mb-5 text-lg font-black tracking-[-0.03em] text-[#071b2b]">Ürün Bilgileri</h2>
+      <h2 className="mb-5 text-lg font-black tracking-[-0.03em] text-[#071b2b]">Urun Bilgileri</h2>
       <div className="grid gap-4 md:grid-cols-2">
         <label className={labelClass}>
-          Ürün adı
+          Urun adi
           <input value={form.name} onChange={(e) => updateField('name', e.target.value)} className={fieldClass} required />
         </label>
         <label className={labelClass}>
           Kategori
-          <input value={form.category} onChange={(e) => updateField('category', e.target.value)} className={fieldClass} placeholder="Kartvizit, Broşür…" required />
+          <select
+            value={form.categoryId}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className={fieldClass}
+          >
+            <option value="">Kategori secin...</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
         </label>
         <label className={`${labelClass} md:col-span-2`}>
-          Açıklama
+          Aciklama
           <textarea rows={3} value={form.description} onChange={(e) => updateField('description', e.target.value)} className={fieldClass} required />
         </label>
         <label className={`${labelClass} md:col-span-2`}>
-          Ürün görseli yolu
+          Urun gorseli yolu
           <input
             value={form.image}
             onChange={(e) => updateField('image', e.target.value)}
@@ -382,15 +422,35 @@ function ProductForm({ product, onCancel, onSave }) {
             placeholder="images/products/urun-adi.webp  veya  https://..."
           />
           <span className="mt-1 block text-xs text-slate-400">
-            Görsel dosyasını <code className="rounded bg-slate-100 px-1 font-mono">public/images/products/</code> klasörüne ekleyin, yolunu buraya yazın.
-            Boş bırakılırsa placeholder gösterilir.
+            Gorsel dosyasini <code className="rounded bg-slate-100 px-1 font-mono">public/images/products/</code> klasorune ekleyin.
           </span>
         </label>
+        <label className={labelClass}>
+          Tahmini Teslim Suresi
+          <input
+            value={form.deliveryTime}
+            onChange={(e) => updateField('deliveryTime', e.target.value)}
+            className={fieldClass}
+            placeholder="2-3 Is Gunu"
+          />
+        </label>
+        <div className="flex items-end">
+          <div className="flex gap-4">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <input type="checkbox" checked={form.featured} onChange={(e) => updateField('featured', e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
+              <span className="text-sm font-bold text-[#102331]">One Cikan</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <input type="checkbox" checked={form.bestSeller} onChange={(e) => updateField('bestSeller', e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
+              <span className="text-sm font-bold text-[#102331]">Cok Satan</span>
+            </label>
+          </div>
+        </div>
         <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
           <input type="checkbox" checked={form.active} onChange={(e) => updateField('active', e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
           <span>
-            <span className="block text-sm font-extrabold text-[#102331]">Ürün aktif</span>
-            <span className="mt-0.5 block text-xs text-slate-500">Aktif ürünler ana sayfada ve ürünler sayfasında görüntülenir.</span>
+            <span className="block text-sm font-extrabold text-[#102331]">Urun aktif</span>
+            <span className="mt-0.5 block text-xs text-slate-500">Aktif urunler ana sayfada ve urunler sayfasinda goruntulenir.</span>
           </span>
         </label>
       </div>
@@ -400,22 +460,14 @@ function ProductForm({ product, onCancel, onSave }) {
         <div className="mb-4 flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-black tracking-[-0.03em] text-[#071b2b]">
-              Varyantlar{' '}
-              <span className="ml-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-bold text-slate-500">
-                {variants.length}
-              </span>
+              Varyantlar <span className="ml-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-bold text-slate-500">{variants.length}</span>
             </h2>
-            <p className="mt-0.5 text-xs text-slate-400">Her varyant ayrı ebat, adet veya fiyat seçeneği temsil eder.</p>
+            <p className="mt-0.5 text-xs text-slate-400">Her varyant ayri ebat, adet veya fiyat secenegi temsil eder.</p>
           </div>
-          <button
-            type="button"
-            onClick={addVariant}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#071b2b] px-3.5 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#0f2a3e]"
-          >
+          <button type="button" onClick={addVariant} className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#071b2b] px-3.5 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#0f2a3e]">
             <Plus size={16} /> Varyant Ekle
           </button>
         </div>
-
         <div className="space-y-2.5">
           {variants.map((v, i) => (
             <VariantEditor
@@ -430,14 +482,9 @@ function ProductForm({ product, onCancel, onSave }) {
         </div>
       </div>
 
-      {/* Butonlar */}
       <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button type="button" onClick={onCancel} className="min-h-11 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
-          İptal
-        </button>
-        <button type="submit" className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#17c964] px-5 py-2.5 text-sm font-extrabold text-[#061c13] transition hover:bg-[#21d970]">
-          <Save size={17} /> Kaydet
-        </button>
+        <button type="button" onClick={onCancel} className={btnSecondary}>Iptal</button>
+        <button type="submit" className={btnPrimary}><Save size={17} /> Kaydet</button>
       </div>
     </form>
   );
@@ -448,18 +495,28 @@ function ProductForm({ product, onCancel, onSave }) {
 // ---------------------------------------------------------------------------
 function Dashboard({ products, onNavigate }) {
   const activeCount = products.filter((p) => p.active).length;
+  const featuredCount = products.filter((p) => p.featured || p.bestSeller).length;
+  const activeCampaigns = getActiveCampaigns();
+  const allCategories = getCategories();
+  const priceHistory = getPriceHistory();
+  const lastChange = priceHistory.length > 0 ? priceHistory[0] : null;
+
   const latestProducts = [...products]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 4);
+
   const cards = [
-    { label: 'Toplam ürün', value: products.length, icon: Package },
-    { label: 'Aktif ürün', value: activeCount, icon: Check },
-    { label: 'Pasif ürün', value: products.length - activeCount, icon: Power },
+    { label: 'Toplam urun', value: products.length, icon: Package },
+    { label: 'Aktif urun', value: activeCount, icon: Check },
+    { label: 'Pasif urun', value: products.length - activeCount, icon: Power },
+    { label: 'Aktif Kampanya', value: activeCampaigns.length, icon: Megaphone },
+    { label: 'Toplam Kategori', value: allCategories.length, icon: Folder },
+    { label: 'One Cikan Urun', value: featuredCount, icon: Star },
   ];
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map(({ label, value, icon: Icon }) => (
           <article key={label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(7,27,43,.04)]">
             <div className="flex items-center justify-between">
@@ -473,14 +530,30 @@ function Dashboard({ products, onNavigate }) {
         ))}
       </div>
 
+      {/* Son fiyat degisikligi */}
+      {lastChange && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="flex items-center gap-3">
+            <BarChart3 size={18} className="text-[#11984b]" />
+            <p className="text-sm font-bold text-slate-500">
+              Son fiyat degisikligi: <span className="font-extrabold text-[#071b2b]">{lastChange.productName}</span>
+              {' '}
+              <span className={lastChange.newPrice > lastChange.oldPrice ? 'text-red-500' : 'text-[#11984b]'}>
+                {lastChange.newPrice > lastChange.oldPrice ? '+' : ''}{formatPrice(lastChange.newPrice - lastChange.oldPrice)}
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
       <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(7,27,43,.04)] sm:p-7">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Son eklenen ürünler</h2>
-            <p className="mt-1 text-sm text-slate-500">En yeni ürün kayıtları</p>
+            <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Son eklenen urunler</h2>
+            <p className="mt-1 text-sm text-slate-500">En yeni urun kayitlari</p>
           </div>
           <button type="button" onClick={() => onNavigate('products')} className="text-sm font-extrabold text-[#11984b] hover:text-[#071b2b]">
-            Tümünü gör
+            Tumunu gor
           </button>
         </div>
         <div className="mt-5 divide-y divide-slate-100">
@@ -501,7 +574,7 @@ function Dashboard({ products, onNavigate }) {
             </div>
           ))}
           {latestProducts.length === 0 && (
-            <p className="py-8 text-center text-sm text-slate-400">Henüz ürün eklenmedi.</p>
+            <p className="py-8 text-center text-sm text-slate-400">Henuz urun eklenmedi.</p>
           )}
         </div>
       </section>
@@ -510,26 +583,22 @@ function Dashboard({ products, onNavigate }) {
 }
 
 // ---------------------------------------------------------------------------
-// Ürünler listesi
+// Urunler listesi
 // ---------------------------------------------------------------------------
 function Products({ products, onAdd, onEdit }) {
   const removeProduct = (product) => {
-    if (window.confirm(`"${product.name}" ürünü silinsin mi?`)) productRepository.remove(product.id);
+    if (window.confirm(`"${product.name}" urunu silinsin mi?`)) productRepository.remove(product.id);
   };
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(7,27,43,.04)]">
       <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
         <div>
-          <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Ürünler</h2>
-          <p className="mt-1 text-sm text-slate-500">Fiyatları, durumları ve ürün detaylarını yönetin.</p>
+          <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Urunler</h2>
+          <p className="mt-1 text-sm text-slate-500">Fiyatlari, durumlari ve urun detaylarini yonetin.</p>
         </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#17c964] px-4 py-2.5 text-sm font-extrabold text-[#061c13]"
-        >
-          <Plus size={17} /> Ürün Ekle
+        <button type="button" onClick={onAdd} className={btnPrimary}>
+          <Plus size={17} /> Urun Ekle
         </button>
       </div>
 
@@ -540,55 +609,33 @@ function Products({ products, onAdd, onEdit }) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="font-extrabold text-[#102331]">{product.name}</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  {product.category} · {product.variants.length} varyant
-                </p>
+                <p className="mt-1 text-xs text-slate-400">{product.category} · {product.variants.length} varyant</p>
               </div>
-              <span
-                className={`rounded-full px-2.5 py-1 text-xs font-bold ${product.active ? 'bg-[#edf9f2] text-[#11984b]' : 'bg-slate-100 text-slate-500'}`}
-              >
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${product.active ? 'bg-[#edf9f2] text-[#11984b]' : 'bg-slate-100 text-slate-500'}`}>
                 {product.active ? 'Aktif' : 'Pasif'}
               </span>
             </div>
             <p className="mt-4 text-xl font-black text-[#071b2b]">{formatPrice(getStartingPrice(product))}'den</p>
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => productRepository.toggleActive(product.id)}
-                className="flex min-h-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600"
-              >
-                <Power size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onEdit(product.id)}
-                className="flex min-h-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600"
-              >
-                <Pencil size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => removeProduct(product)}
-                className="flex min-h-10 items-center justify-center rounded-xl border border-red-100 text-red-500"
-              >
-                <Trash2 size={16} />
-              </button>
+              <button type="button" onClick={() => productRepository.toggleActive(product.id)} className="flex min-h-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600"><Power size={16} /></button>
+              <button type="button" onClick={() => onEdit(product.id)} className="flex min-h-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600"><Pencil size={16} /></button>
+              <button type="button" onClick={() => removeProduct(product)} className="flex min-h-10 items-center justify-center rounded-xl border border-red-100 text-red-500"><Trash2 size={16} /></button>
             </div>
           </article>
         ))}
-        {products.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Henüz ürün eklenmedi.</p>}
+        {products.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Henuz urun eklenmedi.</p>}
       </div>
 
-      {/* Masaüstü tablo */}
+      {/* Masaustu tablo */}
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[800px] text-left">
           <thead>
             <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
-              <th className="px-7 py-4">Ürün</th>
-              <th className="px-5 py-4">Başlangıç Fiyatı</th>
+              <th className="px-7 py-4">Urun</th>
+              <th className="px-5 py-4">Baslangic Fiyati</th>
               <th className="px-5 py-4">Varyant</th>
               <th className="px-5 py-4">Durum</th>
-              <th className="px-7 py-4 text-right">İşlemler</th>
+              <th className="px-7 py-4 text-right">Islemler</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -615,25 +662,15 @@ function Products({ products, onAdd, onEdit }) {
                       href={productHref(product.slug)}
                       target="_blank"
                       rel="noreferrer"
-                      aria-label={`${product.name} ürününü önizle`}
+                      aria-label={`${product.name} onizle`}
                       className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-[#17c964] hover:text-[#11984b]"
                     >
                       <Eye size={16} />
                     </a>
-                    <button
-                      type="button"
-                      onClick={() => onEdit(product.id)}
-                      aria-label={`${product.name} ürününü düzenle`}
-                      className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-[#17c964] hover:text-[#11984b]"
-                    >
+                    <button type="button" onClick={() => onEdit(product.id)} aria-label={`${product.name} duzenle`} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-[#17c964] hover:text-[#11984b]">
                       <Pencil size={16} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => removeProduct(product)}
-                      aria-label={`${product.name} ürününü sil`}
-                      className="grid h-9 w-9 place-items-center rounded-xl border border-red-100 text-red-400 transition hover:bg-red-50 hover:text-red-600"
-                    >
+                    <button type="button" onClick={() => removeProduct(product)} aria-label={`${product.name} sil`} className="grid h-9 w-9 place-items-center rounded-xl border border-red-100 text-red-400 transition hover:bg-red-50 hover:text-red-600">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -641,11 +678,7 @@ function Products({ products, onAdd, onEdit }) {
               </tr>
             ))}
             {products.length === 0 && (
-              <tr>
-                <td colSpan={5} className="p-10 text-center text-sm text-slate-400">
-                  Henüz ürün eklenmedi.
-                </td>
-              </tr>
+              <tr><td colSpan={5} className="p-10 text-center text-sm text-slate-400">Henuz urun eklenmedi.</td></tr>
             )}
           </tbody>
         </table>
@@ -655,9 +688,334 @@ function Products({ products, onAdd, onEdit }) {
 }
 
 // ---------------------------------------------------------------------------
-// Kalıcılık uyarısı
+// Kategoriler sayfasi
 // ---------------------------------------------------------------------------
-function PersistenceBanner({ products }) {
+function CategoriesPage() {
+  const [categories, setCategories] = useState(() => getCategories());
+  useEffect(() => subscribeToCategories(setCategories), []);
+
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({ name: '', description: '', sortOrder: 0 });
+
+  const startEdit = (cat) => {
+    setEditing(cat.id);
+    setForm({ name: cat.name, description: cat.description, sortOrder: cat.sortOrder });
+  };
+
+  const startAdd = () => {
+    setEditing('new');
+    setForm({ name: '', description: '', sortOrder: categories.length + 1 });
+  };
+
+  const handleSave = () => {
+    if (!form.name.trim()) { alert('Kategori adi gereklidir.'); return; }
+    if (editing === 'new') {
+      categoryRepository.create({ name: form.name, slug: slugify(form.name), description: form.description, sortOrder: Number(form.sortOrder) || 0 });
+    } else {
+      categoryRepository.update(editing, { name: form.name, description: form.description, sortOrder: Number(form.sortOrder) || 0 });
+    }
+    setEditing(null);
+  };
+
+  const handleDelete = (cat) => {
+    if (window.confirm(`"${cat.name}" kategorisi silinsin mi?`)) categoryRepository.remove(cat.id);
+  };
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(7,27,43,.04)]">
+      <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+        <div>
+          <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Kategoriler</h2>
+          <p className="mt-1 text-sm text-slate-500">Urun kategorilerini yonetin.</p>
+        </div>
+        <button type="button" onClick={startAdd} className={btnPrimary}><Plus size={17} /> Kategori Ekle</button>
+      </div>
+
+      {/* Form */}
+      {editing && (
+        <div className="border-b border-slate-100 bg-slate-50/50 p-5 sm:p-7">
+          <h3 className="mb-4 text-sm font-black text-[#071b2b]">{editing === 'new' ? 'Yeni Kategori' : 'Kategori Duzenle'}</h3>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className={labelClass}>
+              Kategori adi
+              <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className={fieldClass} required />
+            </label>
+            <label className={labelClass}>
+              Aciklama
+              <input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className={fieldClass} />
+            </label>
+            <label className={labelClass}>
+              Siralama
+              <input type="number" min="0" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))} className={fieldClass} />
+            </label>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={handleSave} className={btnPrimary}><Save size={15} /> Kaydet</button>
+            <button type="button" onClick={() => setEditing(null)} className={btnSecondary}>Iptal</button>
+          </div>
+        </div>
+      )}
+
+      <div className="divide-y divide-slate-100">
+        {categories.sort((a, b) => a.sortOrder - b.sortOrder).map((cat) => (
+          <div key={cat.id} className="flex items-center justify-between gap-4 p-5 sm:px-7">
+            <div className="min-w-0">
+              <p className="font-extrabold text-[#102331]">{cat.name}</p>
+              <p className="mt-1 text-xs text-slate-400">{cat.slug} · Sira: {cat.sortOrder}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button type="button" onClick={() => categoryRepository.toggleActive(cat.id)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${cat.active ? 'bg-[#edf9f2] text-[#11984b]' : 'bg-slate-100 text-slate-500'}`}>
+                {cat.active ? 'Aktif' : 'Pasif'}
+              </button>
+              <button type="button" onClick={() => startEdit(cat)} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:text-[#11984b]"><Pencil size={14} /></button>
+              <button type="button" onClick={() => handleDelete(cat)} className="grid h-9 w-9 place-items-center rounded-xl border border-red-100 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+            </div>
+          </div>
+        ))}
+        {categories.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Henuz kategori eklenmedi.</p>}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Kampanyalar sayfasi
+// ---------------------------------------------------------------------------
+function CampaignsPage() {
+  const products = useProducts();
+  const [campaigns, setCampaigns] = useState(() => getCampaigns());
+  useEffect(() => subscribeToCampaigns(setCampaigns), []);
+
+  const [editing, setEditing] = useState(null);
+  const emptyForm = { title: '', description: '', productSlug: '', campaignPrice: 0, oldPrice: 0, badgeText: '', startDate: '', endDate: '', active: true, featured: true, sortOrder: 0 };
+  const [form, setForm] = useState(emptyForm);
+
+  const startAdd = () => { setEditing('new'); setForm(emptyForm); };
+  const startEdit = (camp) => { setEditing(camp.id); setForm({ ...camp }); };
+  const updateForm = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+
+  const handleSave = () => {
+    if (!form.title.trim()) { alert('Kampanya basligi gereklidir.'); return; }
+    if (editing === 'new') {
+      campaignRepository.create(form);
+    } else {
+      campaignRepository.update(editing, form);
+    }
+    setEditing(null);
+  };
+
+  const handleDelete = (camp) => {
+    if (window.confirm(`"${camp.title}" kampanyasi silinsin mi?`)) campaignRepository.remove(camp.id);
+  };
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(7,27,43,.04)]">
+      <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+        <div>
+          <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Kampanyalar</h2>
+          <p className="mt-1 text-sm text-slate-500">Kampanya olusturun, duzenleyin ve yonetin.</p>
+        </div>
+        <button type="button" onClick={startAdd} className={btnPrimary}><Plus size={17} /> Kampanya Ekle</button>
+      </div>
+
+      {/* Form */}
+      {editing && (
+        <div className="border-b border-slate-100 bg-slate-50/50 p-5 sm:p-7">
+          <h3 className="mb-4 text-sm font-black text-[#071b2b]">{editing === 'new' ? 'Yeni Kampanya' : 'Kampanya Duzenle'}</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label className={labelClass}>
+              Baslik
+              <input value={form.title} onChange={(e) => updateForm('title', e.target.value)} className={fieldClass} required />
+            </label>
+            <label className={labelClass}>
+              Urun
+              <select value={form.productSlug} onChange={(e) => updateForm('productSlug', e.target.value)} className={fieldClass}>
+                <option value="">Urun secin...</option>
+                {products.map((p) => <option key={p.id} value={p.slug}>{p.name}</option>)}
+              </select>
+            </label>
+            <label className={labelClass}>
+              Rozet Metni
+              <input value={form.badgeText} onChange={(e) => updateForm('badgeText', e.target.value)} className={fieldClass} placeholder="Firsat" />
+            </label>
+            <label className={labelClass}>
+              Kampanya Fiyati (TL)
+              <input type="number" min="0" step="0.01" value={form.campaignPrice} onChange={(e) => updateForm('campaignPrice', e.target.value)} className={fieldClass} />
+            </label>
+            <label className={labelClass}>
+              Eski Fiyat (TL)
+              <input type="number" min="0" step="0.01" value={form.oldPrice} onChange={(e) => updateForm('oldPrice', e.target.value)} className={fieldClass} />
+            </label>
+            <label className={labelClass}>
+              Siralama
+              <input type="number" min="0" value={form.sortOrder} onChange={(e) => updateForm('sortOrder', e.target.value)} className={fieldClass} />
+            </label>
+            <label className={labelClass}>
+              Baslangic Tarihi
+              <input type="date" value={form.startDate} onChange={(e) => updateForm('startDate', e.target.value)} className={fieldClass} />
+            </label>
+            <label className={labelClass}>
+              Bitis Tarihi
+              <input type="date" value={form.endDate} onChange={(e) => updateForm('endDate', e.target.value)} className={fieldClass} />
+            </label>
+            <label className={`${labelClass} sm:col-span-2 lg:col-span-3`}>
+              Aciklama
+              <input value={form.description} onChange={(e) => updateForm('description', e.target.value)} className={fieldClass} />
+            </label>
+            <div className="flex gap-4 sm:col-span-2 lg:col-span-3">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <input type="checkbox" checked={form.active} onChange={(e) => updateForm('active', e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
+                <span className="text-sm font-bold">Aktif</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <input type="checkbox" checked={form.featured} onChange={(e) => updateForm('featured', e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
+                <span className="text-sm font-bold">Ana Sayfada Goster</span>
+              </label>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={handleSave} className={btnPrimary}><Save size={15} /> Kaydet</button>
+            <button type="button" onClick={() => setEditing(null)} className={btnSecondary}>Iptal</button>
+          </div>
+        </div>
+      )}
+
+      <div className="divide-y divide-slate-100">
+        {campaigns.sort((a, b) => a.sortOrder - b.sortOrder).map((camp) => {
+          const now = new Date().toISOString().slice(0, 10);
+          const isExpired = camp.endDate && camp.endDate < now;
+          const isUpcoming = camp.startDate && camp.startDate > now;
+          return (
+            <div key={camp.id} className={`flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 ${isExpired ? 'opacity-50' : ''}`}>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate font-extrabold text-[#102331]">{camp.title}</p>
+                  {camp.badgeText && <span className="shrink-0 rounded-full bg-[#17c964]/15 px-2 py-0.5 text-xs font-bold text-[#11984b]">{camp.badgeText}</span>}
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  {formatPrice(camp.campaignPrice)}
+                  {camp.oldPrice > 0 && <> <span className="line-through">{formatPrice(camp.oldPrice)}</span></>}
+                  {' · '}
+                  {camp.startDate || '?'} — {camp.endDate || '?'}
+                  {isExpired && ' · Suresi doldu'}
+                  {isUpcoming && ' · Henuz baslamadi'}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button type="button" onClick={() => campaignRepository.toggleActive(camp.id)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${camp.active ? 'bg-[#edf9f2] text-[#11984b]' : 'bg-slate-100 text-slate-500'}`}>
+                  {camp.active ? 'Aktif' : 'Pasif'}
+                </button>
+                <button type="button" onClick={() => startEdit(camp)} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:text-[#11984b]"><Pencil size={14} /></button>
+                <button type="button" onClick={() => handleDelete(camp)} className="grid h-9 w-9 place-items-center rounded-xl border border-red-100 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+              </div>
+            </div>
+          );
+        })}
+        {campaigns.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Henuz kampanya eklenmedi.</p>}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fiyat Gecmisi sayfasi
+// ---------------------------------------------------------------------------
+function PriceHistoryPage() {
+  const [history, setHistory] = useState(() => getPriceHistory());
+  useEffect(() => subscribeToPriceHistory(setHistory), []);
+  const [filter, setFilter] = useState('');
+
+  const filtered = filter
+    ? history.filter((h) => h.productName.toLowerCase().includes(filter.toLowerCase()))
+    : history;
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(7,27,43,.04)]">
+      <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+        <div>
+          <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Fiyat Gecmisi</h2>
+          <p className="mt-1 text-sm text-slate-500">Urun fiyat degisikliklerini takip edin.</p>
+        </div>
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Urun adina gore filtrele..."
+          className="min-h-11 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#17c964] focus:ring-4 focus:ring-[#17c964]/10 sm:w-64"
+        />
+      </div>
+
+      {/* Mobil liste */}
+      <div className="divide-y divide-slate-100 md:hidden">
+        {filtered.map((entry) => {
+          const diff = entry.newPrice - entry.oldPrice;
+          const isUp = diff > 0;
+          return (
+            <div key={entry.id} className="p-5">
+              <p className="font-extrabold text-[#102331]">{entry.productName}</p>
+              <p className="mt-1 text-xs text-slate-400">{entry.variantName}</p>
+              <div className="mt-3 flex items-center gap-3">
+                <span className="text-sm text-slate-500">{formatPrice(entry.oldPrice)}</span>
+                <span className="text-slate-300">→</span>
+                <span className="text-sm font-extrabold text-[#071b2b]">{formatPrice(entry.newPrice)}</span>
+                <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${isUp ? 'bg-red-50 text-red-500' : 'bg-[#edf9f2] text-[#11984b]'}`}>
+                  {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                  {isUp ? '+' : ''}{formatPrice(diff)}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-slate-400">{new Date(entry.changedAt).toLocaleString('tr-TR')}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Masaustu tablo */}
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[700px] text-left">
+          <thead>
+            <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400">
+              <th className="px-7 py-4">Urun / Varyant</th>
+              <th className="px-5 py-4">Eski Fiyat</th>
+              <th className="px-5 py-4">Yeni Fiyat</th>
+              <th className="px-5 py-4">Fark</th>
+              <th className="px-7 py-4">Tarih</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filtered.map((entry) => {
+              const diff = entry.newPrice - entry.oldPrice;
+              const isUp = diff > 0;
+              return (
+                <tr key={entry.id} className="transition hover:bg-slate-50/70">
+                  <td className="px-7 py-5">
+                    <p className="font-extrabold text-[#102331]">{entry.productName}</p>
+                    <p className="mt-1 text-xs text-slate-400">{entry.variantName}</p>
+                  </td>
+                  <td className="px-5 py-5 text-sm text-slate-500">{formatPrice(entry.oldPrice)}</td>
+                  <td className="px-5 py-5 text-sm font-extrabold text-[#071b2b]">{formatPrice(entry.newPrice)}</td>
+                  <td className="px-5 py-5">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold ${isUp ? 'bg-red-50 text-red-500' : 'bg-[#edf9f2] text-[#11984b]'}`}>
+                      {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                      {isUp ? '+' : ''}{formatPrice(diff)}
+                    </span>
+                  </td>
+                  <td className="px-7 py-5 text-sm text-slate-500">{new Date(entry.changedAt).toLocaleString('tr-TR')}</td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} className="p-10 text-center text-sm text-slate-400">Henuz fiyat degisikligi kaydedilmedi.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Kalicilik uyarisi
+// ---------------------------------------------------------------------------
+function PersistenceBanner() {
   const [downloading, setDownloading] = useState(false);
   const hasChanges = hasLocalChanges();
 
@@ -665,15 +1023,11 @@ function PersistenceBanner({ products }) {
 
   const handleDownload = () => {
     setDownloading(true);
-    try {
-      downloadProductsJs();
-    } finally {
-      setTimeout(() => setDownloading(false), 1000);
-    }
+    try { downloadProductsJs(); } finally { setTimeout(() => setDownloading(false), 1000); }
   };
 
   const handleReset = () => {
-    if (window.confirm('Tüm değişiklikler sıfırlansın mı? Bu işlem geri alınamaz.')) {
+    if (window.confirm('Tum degisiklikler sifirlansin mi? Bu islem geri alinamaz.')) {
       productRepository.reset();
     }
   };
@@ -684,29 +1038,20 @@ function PersistenceBanner({ products }) {
         <div className="flex items-start gap-3">
           <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-500" />
           <div>
-            <p className="text-sm font-extrabold text-amber-800">Kaydedilmemiş değişiklikler var</p>
+            <p className="text-sm font-extrabold text-amber-800">Kaydedilmemis degisiklikler var</p>
             <p className="mt-0.5 text-xs leading-5 text-amber-700">
-              Bu değişiklikler yalnızca bu tarayıcıda görünür. Tüm cihazlara yayınlamak için ürün verilerini dışa
-              aktarın, <code className="rounded bg-amber-100 px-1 font-mono">src/data/products.js</code> dosyasıyla
-              değiştirin ve projeyi yeniden deploy edin.
+              Bu degisiklikler yalnizca bu tarayicida gorunur. Tum cihazlara yayinlamak icin urun verilerini disa
+              aktarin, <code className="rounded bg-amber-100 px-1 font-mono">src/data/products.js</code> dosyasiyla
+              degistirin ve projeyi yeniden deploy edin.
             </p>
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50"
-          >
-            <RotateCcw size={13} /> Sıfırla
+          <button type="button" onClick={handleReset} className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs font-bold text-amber-700 hover:bg-amber-50">
+            <RotateCcw size={13} /> Sifirla
           </button>
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-xs font-extrabold text-white hover:bg-amber-600 disabled:opacity-70"
-          >
-            <Download size={13} /> {downloading ? 'İndiriliyor…' : 'Dışa Aktar (products.js)'}
+          <button type="button" onClick={handleDownload} disabled={downloading} className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-xs font-extrabold text-white hover:bg-amber-600 disabled:opacity-70">
+            <Download size={13} /> {downloading ? 'Indiriliyor...' : 'Disa Aktar (products.js)'}
           </button>
         </div>
       </div>
@@ -715,7 +1060,7 @@ function PersistenceBanner({ products }) {
 }
 
 // ---------------------------------------------------------------------------
-// Admin paneli (giriş sonrası)
+// Admin paneli (giris sonrasi)
 // ---------------------------------------------------------------------------
 function AdminPanel({ onLogout }) {
   const products = useProducts();
@@ -725,15 +1070,21 @@ function AdminPanel({ onLogout }) {
 
   const navigation = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'products', label: 'Ürünler', icon: Package },
-    { id: 'add', label: 'Ürün Ekle', icon: Plus },
+    { id: 'products', label: 'Urunler', icon: Package },
+    { id: 'categories', label: 'Kategoriler', icon: Folder },
+    { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
+    { id: 'priceHistory', label: 'Fiyat Gecmisi', icon: BarChart3 },
+    { id: 'add', label: 'Urun Ekle', icon: Plus },
   ];
 
   const titles = {
-    dashboard: ['Dashboard', 'Ürünlerin genel durumunu görüntüleyin.'],
-    products: ['Ürünler', 'Ürün listenizi yönetin.'],
-    add: ['Ürün Ekle', 'Yeni ürün bilgilerini kaydedin.'],
-    edit: ['Ürün Düzenle', 'Mevcut ürün bilgilerini güncelleyin.'],
+    dashboard: ['Dashboard', 'Urunlerin genel durumunu goruntuleyIn.'],
+    products: ['Urunler', 'Urun listenizi yonetin.'],
+    categories: ['Kategoriler', 'Urun kategorilerini yonetin.'],
+    campaigns: ['Kampanyalar', 'Kampanyalarinizi yonetin.'],
+    priceHistory: ['Fiyat Gecmisi', 'Fiyat degisikliklerini takip edin.'],
+    add: ['Urun Ekle', 'Yeni urun bilgilerini kaydedin.'],
+    edit: ['Urun Duzenle', 'Mevcut urun bilgilerini guncelleyin.'],
   };
 
   const navigate = (nextView) => {
@@ -759,19 +1110,15 @@ function AdminPanel({ onLogout }) {
 
   return (
     <div className="min-h-screen bg-[#f4f7f5] text-[#102331] lg:grid lg:grid-cols-[250px_1fr]">
-      {/* Kenar çubuğu */}
+      {/* Kenar cubugu */}
       <aside className="bg-[#071b2b] p-5 text-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:p-6">
         <div className="flex items-center justify-between">
           <AdminLogo />
-          <a
-            href="../"
-            aria-label="Siteye dön"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/10 hover:text-white lg:hidden"
-          >
+          <a href="../" aria-label="Siteye don" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-white/60 hover:bg-white/10 hover:text-white lg:hidden">
             <ArrowLeft size={18} />
           </a>
         </div>
-        <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 lg:mt-10 lg:flex-col lg:overflow-visible" aria-label="Admin menüsü">
+        <nav className="mt-6 flex gap-2 overflow-x-auto pb-1 lg:mt-10 lg:flex-col lg:overflow-visible" aria-label="Admin menusu">
           {navigation.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -786,54 +1133,45 @@ function AdminPanel({ onLogout }) {
           ))}
         </nav>
         <div className="mt-auto hidden space-y-2 pt-8 lg:block">
-          <a
-            href="../"
-            className="flex min-h-11 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-400 transition hover:bg-white/5 hover:text-white"
-          >
-            <ArrowLeft size={18} /> Siteyi Gör
+          <a href="../" className="flex min-h-11 items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-400 transition hover:bg-white/5 hover:text-white">
+            <ArrowLeft size={18} /> Siteyi Gor
           </a>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-400 transition hover:bg-white/5 hover:text-white"
-          >
-            <LogOut size={18} /> Çıkış Yap
+          <button type="button" onClick={onLogout} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-400 transition hover:bg-white/5 hover:text-white">
+            <LogOut size={18} /> Cikis Yap
           </button>
         </div>
       </aside>
 
-      {/* Ana içerik */}
+      {/* Ana icerik */}
       <main className="min-w-0">
         <header className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-5 sm:px-8 lg:px-10">
           <div>
-            <p className="text-xs font-black uppercase tracking-[.16em] text-[#11984b]">Yönetim paneli</p>
+            <p className="text-xs font-black uppercase tracking-[.16em] text-[#11984b]">Yonetim paneli</p>
             <h1 className="mt-1 text-2xl font-black tracking-[-0.04em] text-[#071b2b] sm:text-3xl">{title}</h1>
             <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
           </div>
-          <button
-            type="button"
-            onClick={onLogout}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 lg:hidden"
-            aria-label="Çıkış yap"
-          >
+          <button type="button" onClick={onLogout} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 lg:hidden" aria-label="Cikis yap">
             <LogOut size={18} />
           </button>
         </header>
 
         <div className="p-5 sm:p-8 lg:p-10">
-          <PersistenceBanner products={products} />
+          <PersistenceBanner />
 
           {view === 'dashboard' && <Dashboard products={products} onNavigate={navigate} />}
           {view === 'products' && <Products products={products} onAdd={() => navigate('add')} onEdit={editProduct} />}
+          {view === 'categories' && <CategoriesPage />}
+          {view === 'campaigns' && <CampaignsPage />}
+          {view === 'priceHistory' && <PriceHistoryPage />}
           {view === 'add' && <ProductForm onCancel={() => navigate('products')} onSave={saveProduct} />}
           {view === 'edit' && editingProduct && (
             <ProductForm product={editingProduct} onCancel={() => navigate('products')} onSave={saveProduct} />
           )}
           {view === 'edit' && !editingProduct && (
             <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center">
-              <p className="text-slate-500">Düzenlenecek ürün bulunamadı.</p>
+              <p className="text-slate-500">Duzenlenecek urun bulunamadi.</p>
               <button type="button" onClick={() => navigate('products')} className="mt-4 font-extrabold text-[#11984b]">
-                Ürünlere dön
+                Urunlere don
               </button>
             </div>
           )}

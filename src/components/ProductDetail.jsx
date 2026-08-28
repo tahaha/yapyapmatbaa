@@ -1,4 +1,4 @@
-import { Check, FileCheck2, MessageCircle, Palette } from 'lucide-react';
+import { Check, Clock, FileCheck2, MessageCircle, Palette, Truck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { createWhatsAppUrl } from '../config/contact.js';
 import { formatPrice } from '../data/productStore.js';
@@ -60,10 +60,11 @@ export default function ProductDetail({ product }) {
     `Adet: ${new Intl.NumberFormat('tr-TR').format(variant.quantity)}`,
     variant.paper && `Kağıt: ${variant.paper}`,
     variant.printing && `Baskı: ${variant.printing}`,
-    variant.finish && `Yüzey: ${variant.finish}`,
+    variant.finish && `Yuzey: ${variant.finish}`,
     variant.cut && `Kesim: ${variant.cut}`,
     `Fiyat: ${formatPrice(variant.price)}`,
-    `Tasarım: ${designText}`,
+    product.deliveryTime && `Tahmini Teslim: ${product.deliveryTime}`,
+    `Tasarim: ${designText}`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -112,10 +113,23 @@ export default function ProductDetail({ product }) {
         </div>
 
         <div className="mt-7 rounded-3xl bg-[#071b2b] p-5 text-white sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Seçiminize göre fiyat</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Seciminize gore fiyat</p>
           <p className="mt-1 text-4xl font-black tracking-[-0.05em] text-[#54e98f]">{formatPrice(variant.price)}</p>
-          <p className="mt-2 text-xs leading-5 text-slate-400">Kargo ücreti teslimat iline göre ayrıca hesaplanır.</p>
+          <p className="mt-2 text-xs leading-5 text-slate-400">Kargo ucreti teslimat iline gore ayrica hesaplanir.</p>
         </div>
+
+        {/* Tahmini teslim suresi */}
+        {product.deliveryTime && (
+          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-[#17c964]/20 bg-[#edf9f2] p-4">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#17c964]/15 text-[#11984b]">
+              <Truck size={19} />
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-[#11984b]">Tahmini Teslim</p>
+              <p className="mt-0.5 text-sm font-extrabold text-[#071b2b]">{product.deliveryTime}</p>
+            </div>
+          </div>
+        )}
 
         <div className="mt-6 grid grid-cols-2 gap-3">
           {specs.map(([label, value]) => (

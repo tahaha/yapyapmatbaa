@@ -11,6 +11,7 @@
  */
 
 import { defaultProducts } from './products.js';
+import { detectPriceChanges } from './priceHistoryStore.js';
 
 const storageKey = 'yapyapmatbaa_products_v3';
 const eventName = 'yapyapmatbaa-products-changed';
@@ -71,10 +72,15 @@ function normalizeProduct(product) {
     slug: product.slug || slugify(product.name),
     name: product.name || '',
     category: product.category || '',
+    categoryId: product.categoryId || '',
     description: product.description || '',
     // Görsel yolu: boş string = görsel henüz eklenmedi (placeholder gösterilir)
     image: product.image || '',
     active: product.active !== false,
+    featured: product.featured === true,
+    bestSeller: product.bestSeller === true,
+    deliveryTime: product.deliveryTime || '2-3 İş Günü',
+    sortOrder: Number(product.sortOrder) || 0,
     createdAt: product.createdAt || new Date().toISOString(),
     features: Array.isArray(product.features) ? product.features : [],
     variants,
@@ -123,10 +129,13 @@ export const productRepository = {
     saveProducts([...products, normalizeProduct(product)]);
   },
   update(id, updates) {
+    const oldProducts = getProducts();
+    const oldProduct = oldProducts.find((p) => p.id === id);
+    const newProduct = normalizeProduct({ ...oldProduct, ...updates, id });
+    // Fiyat degisikliklerini otomatik kaydet
+    if (oldProduct) detectPriceChanges(oldProduct, newProduct);
     saveProducts(
-      getProducts().map((p) =>
-        p.id === id ? normalizeProduct({ ...p, ...updates, id }) : p,
-      ),
+      oldProducts.map((p) => (p.id === id ? newProduct : p)),
     );
   },
   remove(id) {

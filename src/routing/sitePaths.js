@@ -12,9 +12,13 @@ export const productsHref = `${siteBasePath}urunler/`;
 export const productHref = (slug) => `${productsHref}${slug}/`;
 export const assetHref = (path) => `${siteBasePath}${String(path).replace(/^\/+/, '')}`;
 
+/**
+ * URL'den ürün slug'ını çıkarır.
+ * /urunler/kartvizit/ → 'kartvizit'
+ * /urunler/yeni-urun/ → 'yeni-urun'
+ */
 export function getCurrentProductSlug() {
   if (typeof window === 'undefined') return null;
   const match = window.location.pathname.match(/\/urunler\/([^/]+)\/?$/);
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
-

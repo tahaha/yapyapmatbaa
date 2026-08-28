@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      GitHub Pages SPA Fallback — YapyapMatbaa
+      
+      GitHub Pages, bilinmeyen bir URL'e istek geldiğinde bu 404.html'i sunar.
+      Bu sayfa, URL'i sessionStorage'a kaydedip ana sayfaya yönlendirir.
+      Ana sayfa (index.html) sessionStorage'daki URL'i okuyarak doğru içeriği gösterir.
+      
+      Bu sayede admin panelinden eklenen yeni ürünlerin URL'leri de çalışır;
+      her ürün için ayrı bir index.html dosyası oluşturulmak zorunda kalınmaz.
+    -->
+    <script>
+      (function () {
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+
+        // Temel yolu bul (github.io/repo-adi/ kısmı)
+        // /urunler/ veya /admin/ öncesindeki kısım base path'tir
+        var basePath = '/';
+        var markers = ['/urunler/', '/admin/'];
+        for (var i = 0; i < markers.length; i++) {
+          var idx = path.indexOf(markers[i]);
+          if (idx >= 0) {
+            basePath = path.slice(0, idx + 1);
+            break;
+          }
+        }
+
+        // Gidilmek istenen tam yolu sakla
+        sessionStorage.setItem('spa_redirect_path', path + search);
+
+        // Ana sayfaya yönlendir
+        window.location.replace(window.location.origin + basePath + hash);
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

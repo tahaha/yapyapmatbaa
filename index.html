@@ -3,20 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <meta name="theme-color" content="#071b2b" />
+    <!-- GitHub Pages SPA Routing: 404.html tarafından yönlendirilen URL'i geri yükle -->
+    <script>
+      (function () {
+        var spa = sessionStorage.getItem('spa_redirect_path');
+        if (spa) {
+          sessionStorage.removeItem('spa_redirect_path');
+          // URL'i geri yükle (sayfa yeniden yüklenmeden)
+          window.history.replaceState(null, '', spa);
+        }
+      })();
+    </script>
     <meta name="description" content="Kartvizit, etiket, magnet ve broşür için ücretsiz tasarım desteği, kaliteli baskı ve Türkiye geneli gönderim." />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="tr_TR" />
     <meta property="og:title" content="Yapyapmatbaa | Akılda Kalıcı Baskı Tasarımları" />
     <meta property="og:description" content="Siz hayal edin, biz tasarlayıp kapınıza kadar gönderelim." />
-    <meta property="og:image" content="https://yapyapmatbaa.yapyapmatbaa.chatgpt.site/og.png" />
+    <meta property="og:image" content="/og.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Yapyapmatbaa | Akılda Kalıcı Baskı Tasarımları" />
     <meta name="twitter:description" content="Siz hayal edin, biz tasarlayıp kapınıza kadar gönderelim." />
-    <meta name="twitter:image" content="https://yapyapmatbaa.yapyapmatbaa.chatgpt.site/og.png" />
+    <meta name="twitter:image" content="/og.png" />
     <title>Yapyapmatbaa | Kartvizit ve Baskı Tasarımları</title>
   </head>
   <body>

@@ -15,7 +15,7 @@ import {
   EyeOff,
   Folder,
   Image,
-  Instagram,
+  Camera,
   LayoutDashboard,
   LogOut,
   Megaphone,

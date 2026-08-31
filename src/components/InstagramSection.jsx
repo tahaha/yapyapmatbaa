@@ -1,4 +1,4 @@
-import { ArrowRight, ExternalLink, Instagram } from 'lucide-react';
+import { ArrowRight, ExternalLink, Camera } from 'lucide-react';
 import { useInstagram } from '../hooks/useInstagram.js';
 
 export default function InstagramSection() {

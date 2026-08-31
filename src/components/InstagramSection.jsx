@@ -39,7 +39,7 @@ export default function InstagramSection() {
                   />
                 ) : (
                   <div className="grid h-full w-full place-items-center bg-[#edf9f2] text-[#11984b]">
-                    <Instagram size={36} />
+                    <Camera size={36} />
                   </div>
                 )}
 
@@ -70,7 +70,7 @@ export default function InstagramSection() {
               rel="noreferrer"
               className="group inline-flex min-h-14 items-center gap-3 rounded-2xl border-2 border-[#071b2b] bg-[#071b2b] px-6 py-4 font-extrabold text-white transition hover:-translate-y-0.5 hover:bg-[#0c293b]"
             >
-              <Instagram size={22} />
+              <Camera size={22} />
               {settings.followButtonText}
               <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
             </a>

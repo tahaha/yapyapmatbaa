@@ -1773,7 +1773,7 @@ function AdminPanel({ onLogout }) {
     { id: 'priceHistory', label: 'Fiyat Gecmisi', icon: BarChart3 },
     { id: 'siteContent', label: 'Site Icerikleri', icon: FileText },
     { id: 'reviews', label: 'Musteri Yorumlari', icon: MessageSquare },
-    { id: 'instagram', label: 'Instagram / Galeri', icon: Instagram },
+    { id: 'instagram', label: 'Instagram / Galeri', icon: Camera },
     { id: 'add', label: 'Urun Ekle', icon: Plus },
   ];
 

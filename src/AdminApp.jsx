@@ -14,9 +14,12 @@ import {
   Eye,
   EyeOff,
   Folder,
+  Image,
+  Instagram,
   LayoutDashboard,
   LogOut,
   Megaphone,
+  MessageSquare,
   Package,
   Pencil,
   Plus,
@@ -30,6 +33,7 @@ import {
   TrendingDown,
   TrendingUp,
   Truck,
+  Users,
 } from 'lucide-react';
 import {
   adminSessionKey,
@@ -63,6 +67,18 @@ import {
   saveSiteContentSection,
   subscribeToSiteContent,
 } from './data/siteContentStore.js';
+import {
+  getReviews,
+  reviewRepository,
+  subscribeToReviews,
+} from './data/reviewStore.js';
+import {
+  getInstagramPosts,
+  getInstagramSettings,
+  instagramRepository,
+  saveInstagramSettings,
+  subscribeToInstagram,
+} from './data/instagramStore.js';
 import { useProducts } from './hooks/useProducts.js';
 import { productHref } from './routing/sitePaths.js';
 
@@ -1406,6 +1422,294 @@ function SiteContentPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Musteri Yorumlari sayfasi
+// ---------------------------------------------------------------------------
+function ReviewsAdminPage() {
+  const [reviews, setReviews] = useState(() => getReviews());
+  useEffect(() => subscribeToReviews(setReviews), []);
+
+  const [editing, setEditing] = useState(null);
+  const emptyForm = { name: '', company: '', text: '', rating: 5, avatar: '', active: true, sortOrder: reviews.length + 1 };
+  const [form, setForm] = useState(emptyForm);
+
+  const startAdd = () => { setEditing('new'); setForm({ ...emptyForm, sortOrder: reviews.length + 1 }); };
+  const startEdit = (review) => { setEditing(review.id); setForm({ ...review }); };
+  const updateForm = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+
+  const handleSave = () => {
+    if (!form.name.trim()) { alert('Musteri adi gereklidir.'); return; }
+    if (!form.text.trim()) { alert('Yorum metni gereklidir.'); return; }
+    if (editing === 'new') {
+      reviewRepository.create(form);
+    } else {
+      reviewRepository.update(editing, form);
+    }
+    setEditing(null);
+  };
+
+  const handleDelete = (review) => {
+    if (window.confirm(`"${review.name}" yorumu silinsin mi?`)) reviewRepository.remove(review.id);
+  };
+
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(7,27,43,.04)]">
+      <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+        <div>
+          <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Musteri Yorumlari</h2>
+          <p className="mt-1 text-sm text-slate-500">Musteri yorumlarini ekleyin, duzenleyin ve yonetin.</p>
+        </div>
+        <button type="button" onClick={startAdd} className={btnPrimary}><Plus size={17} /> Yorum Ekle</button>
+      </div>
+
+      {/* Form */}
+      {editing && (
+        <div className="border-b border-slate-100 bg-slate-50/50 p-5 sm:p-7">
+          <h3 className="mb-4 text-sm font-black text-[#071b2b]">{editing === 'new' ? 'Yeni Yorum' : 'Yorum Duzenle'}</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label className={labelClass}>
+              Musteri adi
+              <input value={form.name} onChange={(e) => updateForm('name', e.target.value)} className={fieldClass} required />
+            </label>
+            <label className={labelClass}>
+              Firma / Sehir
+              <input value={form.company} onChange={(e) => updateForm('company', e.target.value)} className={fieldClass} placeholder="Istanbul" />
+            </label>
+            <label className={labelClass}>
+              Puan (1-5)
+              <div className="mt-1.5 flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => updateForm('rating', star)}
+                    className={`grid h-10 w-10 place-items-center rounded-xl border transition ${
+                      star <= form.rating
+                        ? 'border-[#17c964] bg-[#edf9f2] text-[#17c964]'
+                        : 'border-slate-200 text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    <Star size={18} className={star <= form.rating ? 'fill-[#17c964]' : ''} />
+                  </button>
+                ))}
+              </div>
+            </label>
+            <label className={labelClass}>
+              Siralama
+              <input type="number" min="0" value={form.sortOrder} onChange={(e) => updateForm('sortOrder', e.target.value)} className={fieldClass} />
+            </label>
+            <label className={`${labelClass} sm:col-span-2`}>
+              Profil gorseli (opsiyonel)
+              <input value={form.avatar} onChange={(e) => updateForm('avatar', e.target.value)} className={fieldClass} placeholder="images/reviews/musteri.webp" />
+            </label>
+            <label className={`${labelClass} sm:col-span-2 lg:col-span-3`}>
+              Yorum metni
+              <textarea rows={3} value={form.text} onChange={(e) => updateForm('text', e.target.value)} className={fieldClass} required />
+            </label>
+            <div className="flex gap-4 sm:col-span-2 lg:col-span-3">
+              <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <input type="checkbox" checked={form.active} onChange={(e) => updateForm('active', e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
+                <span className="text-sm font-bold">Aktif</span>
+              </label>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={handleSave} className={btnPrimary}><Save size={15} /> Kaydet</button>
+            <button type="button" onClick={() => setEditing(null)} className={btnSecondary}>Iptal</button>
+          </div>
+        </div>
+      )}
+
+      <div className="divide-y divide-slate-100">
+        {reviews.sort((a, b) => a.sortOrder - b.sortOrder).map((review) => (
+          <div key={review.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="truncate font-extrabold text-[#102331]">{review.name}</p>
+                {review.company && <span className="shrink-0 text-xs text-slate-400">· {review.company}</span>}
+              </div>
+              <p className="mt-1 text-sm text-slate-500 line-clamp-2">{review.text}</p>
+              <div className="mt-1.5 flex gap-0.5">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star key={i} size={13} className={i < review.rating ? 'fill-[#17c964] text-[#17c964]' : 'text-slate-200'} strokeWidth={1.5} />
+                ))}
+                <span className="ml-1 text-xs text-slate-400">Sira: {review.sortOrder}</span>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button type="button" onClick={() => reviewRepository.toggleActive(review.id)} className={`rounded-full px-3 py-1.5 text-xs font-bold ${review.active ? 'bg-[#edf9f2] text-[#11984b]' : 'bg-slate-100 text-slate-500'}`}>
+                {review.active ? 'Aktif' : 'Pasif'}
+              </button>
+              <button type="button" onClick={() => startEdit(review)} className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-500 hover:text-[#11984b]"><Pencil size={14} /></button>
+              <button type="button" onClick={() => handleDelete(review)} className="grid h-9 w-9 place-items-center rounded-xl border border-red-100 text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+            </div>
+          </div>
+        ))}
+        {reviews.length === 0 && <p className="p-8 text-center text-sm text-slate-400">Henuz yorum eklenmedi.</p>}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Instagram / Galeri sayfasi
+// ---------------------------------------------------------------------------
+function InstagramAdminPage() {
+  const [posts, setPosts] = useState(() => getInstagramPosts());
+  const [settings, setSettings] = useState(() => getInstagramSettings());
+  useEffect(() => subscribeToInstagram(({ posts: p }) => { setPosts(getInstagramPosts()); setSettings(getInstagramSettings()); }), []);
+
+  // --- Ayarlar ---
+  const [settingsForm, setSettingsForm] = useState(() => getInstagramSettings());
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const updateSetting = (field, value) => setSettingsForm((f) => ({ ...f, [field]: value }));
+  const handleSaveSettings = () => {
+    saveInstagramSettings(settingsForm);
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 2000);
+  };
+
+  // --- Gorseller ---
+  const [editing, setEditing] = useState(null);
+  const emptyForm = { image: '', caption: '', link: '', active: true, sortOrder: posts.length + 1 };
+  const [form, setForm] = useState(emptyForm);
+
+  const startAdd = () => { setEditing('new'); setForm({ ...emptyForm, sortOrder: posts.length + 1 }); };
+  const startEdit = (post) => { setEditing(post.id); setForm({ ...post }); };
+  const updateForm = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+
+  const handleSave = () => {
+    if (!form.image.trim() && !form.caption.trim()) { alert('Gorsel yolu veya aciklama gereklidir.'); return; }
+    if (editing === 'new') {
+      instagramRepository.create(form);
+    } else {
+      instagramRepository.update(editing, form);
+    }
+    setEditing(null);
+  };
+
+  const handleDelete = (post) => {
+    if (window.confirm('Bu gorsel silinsin mi?')) instagramRepository.remove(post.id);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Ayarlar */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(7,27,43,.04)] sm:p-7">
+        <div className="mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-black tracking-[-0.03em] text-[#071b2b]">Bolum Ayarlari</h3>
+          {settingsSaved && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#edf9f2] px-2.5 py-1 text-xs font-bold text-[#11984b]">
+              <Check size={12} /> Kaydedildi
+            </span>
+          )}
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className={labelClass}>
+            Bolum etiketi
+            <input value={settingsForm.sectionBadge} onChange={(e) => updateSetting('sectionBadge', e.target.value)} className={fieldClass} />
+          </label>
+          <label className={labelClass}>
+            Bolum basligi
+            <input value={settingsForm.sectionTitle} onChange={(e) => updateSetting('sectionTitle', e.target.value)} className={fieldClass} />
+          </label>
+          <label className={labelClass}>
+            Instagram profil URL
+            <input value={settingsForm.profileUrl} onChange={(e) => updateSetting('profileUrl', e.target.value)} className={fieldClass} placeholder="https://instagram.com/yapyapmatbaa" />
+          </label>
+          <label className={labelClass}>
+            Takip butonu yazisi
+            <input value={settingsForm.followButtonText} onChange={(e) => updateSetting('followButtonText', e.target.value)} className={fieldClass} />
+          </label>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button type="button" onClick={handleSaveSettings} className={btnPrimary}><Save size={15} /> Ayarlari Kaydet</button>
+        </div>
+      </div>
+
+      {/* Gorseller listesi */}
+      <section className="rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(7,27,43,.04)]">
+        <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+          <div>
+            <h2 className="text-xl font-black tracking-[-0.03em] text-[#071b2b]">Instagram / Galeri Gorselleri</h2>
+            <p className="mt-1 text-sm text-slate-500">Galeri gorsellerini ekleyin, duzenleyin ve yonetin.</p>
+          </div>
+          <button type="button" onClick={startAdd} className={btnPrimary}><Plus size={17} /> Gorsel Ekle</button>
+        </div>
+
+        {/* Form */}
+        {editing && (
+          <div className="border-b border-slate-100 bg-slate-50/50 p-5 sm:p-7">
+            <h3 className="mb-4 text-sm font-black text-[#071b2b]">{editing === 'new' ? 'Yeni Gorsel' : 'Gorsel Duzenle'}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <label className={`${labelClass} sm:col-span-2 lg:col-span-3`}>
+                Gorsel yolu
+                <input value={form.image} onChange={(e) => updateForm('image', e.target.value)} className={fieldClass} placeholder="images/gallery/ornek.webp" />
+                <span className="mt-1 block text-xs text-slate-400">
+                  Gorsel dosyasini <code className="rounded bg-slate-100 px-1 font-mono">public/images/gallery/</code> klasorune ekleyin.
+                </span>
+              </label>
+              <label className={labelClass}>
+                Kisa aciklama
+                <input value={form.caption} onChange={(e) => updateForm('caption', e.target.value)} className={fieldClass} placeholder="Kartvizit tasarimi" />
+              </label>
+              <label className={labelClass}>
+                Instagram gonderi linki (opsiyonel)
+                <input value={form.link} onChange={(e) => updateForm('link', e.target.value)} className={fieldClass} placeholder="https://instagram.com/p/..." />
+              </label>
+              <label className={labelClass}>
+                Siralama
+                <input type="number" min="0" value={form.sortOrder} onChange={(e) => updateForm('sortOrder', e.target.value)} className={fieldClass} />
+              </label>
+              <div className="flex gap-4 sm:col-span-2 lg:col-span-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                  <input type="checkbox" checked={form.active} onChange={(e) => updateForm('active', e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
+                  <span className="text-sm font-bold">Aktif</span>
+                </label>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={handleSave} className={btnPrimary}><Save size={15} /> Kaydet</button>
+              <button type="button" onClick={() => setEditing(null)} className={btnSecondary}>Iptal</button>
+            </div>
+          </div>
+        )}
+
+        {/* Gorsel Grid */}
+        <div className="p-5 sm:p-7">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {posts.sort((a, b) => a.sortOrder - b.sortOrder).map((post) => (
+              <div key={post.id} className={`group relative overflow-hidden rounded-2xl border ${post.active ? 'border-slate-200' : 'border-dashed border-slate-200 opacity-60'}`}>
+                <div className="aspect-square bg-slate-100">
+                  {post.image ? (
+                    <img src={post.image} alt={post.caption || 'Galeri gorseli'} className="h-full w-full object-cover" loading="lazy" />
+                  ) : (
+                    <div className="grid h-full w-full place-items-center text-slate-300">
+                      <Image size={32} />
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="truncate text-xs font-bold text-[#102331]">{post.caption || 'Aciklama yok'}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">Sira: {post.sortOrder}</p>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <button type="button" onClick={() => instagramRepository.toggleActive(post.id)} className={`rounded-full px-2 py-1 text-xs font-bold ${post.active ? 'bg-[#edf9f2] text-[#11984b]' : 'bg-slate-100 text-slate-500'}`}>
+                      {post.active ? 'Aktif' : 'Pasif'}
+                    </button>
+                    <button type="button" onClick={() => startEdit(post)} className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 text-slate-500 hover:text-[#11984b]"><Pencil size={12} /></button>
+                    <button type="button" onClick={() => handleDelete(post)} className="grid h-7 w-7 place-items-center rounded-lg border border-red-100 text-red-400 hover:text-red-600"><Trash2 size={12} /></button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {posts.length === 0 && <p className="py-8 text-center text-sm text-slate-400">Henuz gorsel eklenmedi.</p>}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Kalicilik uyarisi
 // ---------------------------------------------------------------------------
 function PersistenceBanner() {
@@ -1468,6 +1772,8 @@ function AdminPanel({ onLogout }) {
     { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
     { id: 'priceHistory', label: 'Fiyat Gecmisi', icon: BarChart3 },
     { id: 'siteContent', label: 'Site Icerikleri', icon: FileText },
+    { id: 'reviews', label: 'Musteri Yorumlari', icon: MessageSquare },
+    { id: 'instagram', label: 'Instagram / Galeri', icon: Instagram },
     { id: 'add', label: 'Urun Ekle', icon: Plus },
   ];
 
@@ -1478,6 +1784,8 @@ function AdminPanel({ onLogout }) {
     campaigns: ['Kampanyalar', 'Kampanyalarinizi yonetin.'],
     priceHistory: ['Fiyat Gecmisi', 'Fiyat degisikliklerini takip edin.'],
     siteContent: ['Site Icerikleri', 'Ana sayfadaki metinleri duzenleyin.'],
+    reviews: ['Musteri Yorumlari', 'Musteri yorumlarini yonetin.'],
+    instagram: ['Instagram / Galeri', 'Galeri gorsellerini yonetin.'],
     add: ['Urun Ekle', 'Yeni urun bilgilerini kaydedin.'],
     edit: ['Urun Duzenle', 'Mevcut urun bilgilerini guncelleyin.'],
   };
@@ -1559,6 +1867,8 @@ function AdminPanel({ onLogout }) {
           {view === 'campaigns' && <CampaignsPage />}
           {view === 'priceHistory' && <PriceHistoryPage />}
           {view === 'siteContent' && <SiteContentPage />}
+          {view === 'reviews' && <ReviewsAdminPage />}
+          {view === 'instagram' && <InstagramAdminPage />}
           {view === 'add' && <ProductForm onCancel={() => navigate('products')} onSave={saveProduct} />}
           {view === 'edit' && editingProduct && (
             <ProductForm product={editingProduct} onCancel={() => navigate('products')} onSave={saveProduct} />

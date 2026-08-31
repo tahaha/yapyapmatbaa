@@ -1,7 +1,9 @@
 import { ArrowRight, BadgeCheck, Check, MessageCircle, Palette, Send, Sparkles, Truck } from 'lucide-react';
 import CampaignSection from './components/CampaignSection.jsx';
 import FeaturedSection from './components/FeaturedSection.jsx';
+import InstagramSection from './components/InstagramSection.jsx';
 import ProductCard from './components/ProductCard.jsx';
+import ReviewsSection from './components/ReviewsSection.jsx';
 import SiteFooter from './components/SiteFooter.jsx';
 import SiteHeader from './components/SiteHeader.jsx';
 import { useSiteContent } from './hooks/useSiteContent.js';
@@ -148,6 +150,12 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Müşteri Yorumları */}
+      <ReviewsSection />
+
+      {/* Instagram Galeri */}
+      <InstagramSection />
 
       {/* WhatsApp CTA */}
       <section className="bg-[#071b2b] pt-20 text-white sm:pt-24">

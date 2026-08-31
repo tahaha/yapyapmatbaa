@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  FileText,
   AlertCircle,
   ArrowLeft,
   Award,
@@ -57,6 +58,11 @@ import {
   productRepository,
   slugify,
 } from './data/productStore.js';
+import {
+  getSiteContent,
+  saveSiteContentSection,
+  subscribeToSiteContent,
+} from './data/siteContentStore.js';
 import { useProducts } from './hooks/useProducts.js';
 import { productHref } from './routing/sitePaths.js';
 
@@ -1013,6 +1019,393 @@ function PriceHistoryPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Site Icerikleri sayfasi
+// ---------------------------------------------------------------------------
+
+function SiteContentSection({ title, description, children, onSave, saving }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(7,27,43,.04)]">
+      <div
+        className="flex cursor-pointer items-center justify-between gap-4 p-5 sm:p-7 select-none"
+        onClick={() => setOpen((v) => !v)}
+        role="button"
+        aria-expanded={open}
+      >
+        <div>
+          <h3 className="text-lg font-black tracking-[-0.03em] text-[#071b2b]">{title}</h3>
+          {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+        </div>
+        {open ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+      </div>
+      {open && (
+        <div className="border-t border-slate-100 p-5 sm:p-7">
+          {children}
+          <div className="mt-5 flex justify-end">
+            <button type="button" onClick={onSave} disabled={saving} className={btnPrimary}>
+              <Save size={17} /> {saving ? 'Kaydediliyor...' : 'Kaydet'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SiteContentPage() {
+  const [content, setContent] = useState(() => getSiteContent());
+  useEffect(() => subscribeToSiteContent(setContent), []);
+  const [saving, setSaving] = useState('');
+  const [saved, setSaved] = useState('');
+
+  const showSaved = (section) => {
+    setSaved(section);
+    setTimeout(() => setSaved(''), 2000);
+  };
+
+  const handleSave = (section) => {
+    setSaving(section);
+    saveSiteContentSection(section, content[section]);
+    setTimeout(() => {
+      setSaving('');
+      showSaved(section);
+    }, 300);
+  };
+
+  const update = (section, field, value) => {
+    setContent((prev) => ({
+      ...prev,
+      [section]: { ...prev[section], [field]: value },
+    }));
+  };
+
+  const updateStep = (index, field, value) => {
+    setContent((prev) => {
+      const steps = [...prev.howItWorks.steps];
+      steps[index] = { ...steps[index], [field]: value };
+      return { ...prev, howItWorks: { ...prev.howItWorks, steps } };
+    });
+  };
+
+  const addStep = () => {
+    setContent((prev) => ({
+      ...prev,
+      howItWorks: {
+        ...prev.howItWorks,
+        steps: [...prev.howItWorks.steps, { title: '', description: '' }],
+      },
+    }));
+  };
+
+  const removeStep = (index) => {
+    if (content.howItWorks.steps.length <= 1) return;
+    setContent((prev) => ({
+      ...prev,
+      howItWorks: {
+        ...prev.howItWorks,
+        steps: prev.howItWorks.steps.filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const savedBadge = (section) =>
+    saved === section ? (
+      <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-[#edf9f2] px-2.5 py-1 text-xs font-bold text-[#11984b]">
+        <Check size={12} /> Kaydedildi
+      </span>
+    ) : null;
+
+  return (
+    <div className="space-y-5">
+      {/* Hero */}
+      <SiteContentSection
+        title={<>Hero Alani {savedBadge('hero')}</>}
+        description="Ana sayfadaki karsilama bolumu metinleri."
+        onSave={() => handleSave('hero')}
+        saving={saving === 'hero'}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className={labelClass}>
+            Ust kucuk etiket
+            <input
+              value={content.hero.badge}
+              onChange={(e) => update('hero', 'badge', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={labelClass}>
+            Ana buton yazisi
+            <input
+              value={content.hero.ctaButton}
+              onChange={(e) => update('hero', 'ctaButton', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Ana baslik
+            <textarea
+              rows={2}
+              value={content.hero.title}
+              onChange={(e) => update('hero', 'title', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Alt aciklama
+            <textarea
+              rows={2}
+              value={content.hero.description}
+              onChange={(e) => update('hero', 'description', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+      </SiteContentSection>
+
+      {/* Hizmetler */}
+      <SiteContentSection
+        title={<>Hizmetler / Urunlerimiz Bolumu {savedBadge('services')}</>}
+        description="Ana sayfadaki urun listeleme bolumu metinleri."
+        onSave={() => handleSave('services')}
+        saving={saving === 'services'}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className={labelClass}>
+            Bolum etiketi
+            <input
+              value={content.services.badge}
+              onChange={(e) => update('services', 'badge', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={labelClass}>
+            Bolum basligi
+            <input
+              value={content.services.title}
+              onChange={(e) => update('services', 'title', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Aciklama metni
+            <textarea
+              rows={2}
+              value={content.services.description}
+              onChange={(e) => update('services', 'description', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+      </SiteContentSection>
+
+      {/* Nasil Calisiyoruz */}
+      <SiteContentSection
+        title={<>Nasil Calisiyoruz {savedBadge('howItWorks')}</>}
+        description="Surec adimlarini duzenleyin."
+        onSave={() => handleSave('howItWorks')}
+        saving={saving === 'howItWorks'}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className={labelClass}>
+            Bolum etiketi
+            <input
+              value={content.howItWorks.badge}
+              onChange={(e) => update('howItWorks', 'badge', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={labelClass}>
+            Bolum basligi
+            <input
+              value={content.howItWorks.title}
+              onChange={(e) => update('howItWorks', 'title', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Bolum aciklamasi
+            <textarea
+              rows={2}
+              value={content.howItWorks.description}
+              onChange={(e) => update('howItWorks', 'description', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+
+        <div className="mt-5">
+          <div className="mb-3 flex items-center justify-between gap-4">
+            <h4 className="text-sm font-black text-[#071b2b]">
+              Adimlar <span className="ml-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-sm font-bold text-slate-500">{content.howItWorks.steps.length}</span>
+            </h4>
+            <button type="button" onClick={addStep} className="flex shrink-0 items-center gap-1.5 rounded-xl bg-[#071b2b] px-3.5 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#0f2a3e]">
+              <Plus size={16} /> Adim Ekle
+            </button>
+          </div>
+          <div className="space-y-3">
+            {content.howItWorks.steps.map((step, i) => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-400">Adim #{i + 1}</span>
+                  {content.howItWorks.steps.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeStep(i)}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className={labelClass}>
+                    Adim basligi
+                    <input
+                      value={step.title}
+                      onChange={(e) => updateStep(i, 'title', e.target.value)}
+                      className={fieldClass}
+                    />
+                  </label>
+                  <label className={labelClass}>
+                    Adim aciklamasi
+                    <textarea
+                      rows={2}
+                      value={step.description}
+                      onChange={(e) => updateStep(i, 'description', e.target.value)}
+                      className={fieldClass}
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SiteContentSection>
+
+      {/* Teklif Alani */}
+      <SiteContentSection
+        title={<>Teklif Alani {savedBadge('cta')}</>}
+        description="Alt kisim WhatsApp teklif bolumu metinleri."
+        onSave={() => handleSave('cta')}
+        saving={saving === 'cta'}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className={labelClass}>
+            Ust etiket
+            <input
+              value={content.cta.badge}
+              onChange={(e) => update('cta', 'badge', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={labelClass}>
+            Buton yazisi
+            <input
+              value={content.cta.ctaButton}
+              onChange={(e) => update('cta', 'ctaButton', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Baslik
+            <textarea
+              rows={2}
+              value={content.cta.title}
+              onChange={(e) => update('cta', 'title', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Aciklama
+            <textarea
+              rows={2}
+              value={content.cta.description}
+              onChange={(e) => update('cta', 'description', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+      </SiteContentSection>
+
+      {/* Iletisim */}
+      <SiteContentSection
+        title={<>Iletisim {savedBadge('contact')}</>}
+        description="Footer ve iletisim bolgesindeki bilgiler."
+        onSave={() => handleSave('contact')}
+        saving={saving === 'contact'}
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className={labelClass}>
+            Telefon numarasi (gorunen)
+            <input
+              value={content.contact.phone}
+              onChange={(e) => update('contact', 'phone', e.target.value)}
+              className={fieldClass}
+              placeholder="0543 110 9543"
+            />
+          </label>
+          <label className={labelClass}>
+            Telefon href (tel: linki)
+            <input
+              value={content.contact.phoneHref}
+              onChange={(e) => update('contact', 'phoneHref', e.target.value)}
+              className={fieldClass}
+              placeholder="tel:+905431109543"
+            />
+          </label>
+          <label className={labelClass}>
+            WhatsApp numarasi (ulke kodu ile)
+            <input
+              value={content.contact.whatsappNumber}
+              onChange={(e) => update('contact', 'whatsappNumber', e.target.value)}
+              className={fieldClass}
+              placeholder="905431109543"
+            />
+          </label>
+          <label className={labelClass}>
+            Uretim yeri
+            <input
+              value={content.contact.productionLocation}
+              onChange={(e) => update('contact', 'productionLocation', e.target.value)}
+              className={fieldClass}
+              placeholder="Istanbul / Zeytinburnu"
+            />
+          </label>
+          <label className={`${labelClass} md:col-span-2`}>
+            Kargo bilgisi
+            <textarea
+              rows={2}
+              value={content.contact.shippingInfo}
+              onChange={(e) => update('contact', 'shippingInfo', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+      </SiteContentSection>
+
+      {/* Footer */}
+      <SiteContentSection
+        title={<>Footer {savedBadge('footer')}</>}
+        description="Sayfa altindaki telif yazisi."
+        onSave={() => handleSave('footer')}
+        saving={saving === 'footer'}
+      >
+        <div className="grid gap-4">
+          <label className={labelClass}>
+            Telif yazisi
+            <input
+              value={content.footer.copyright}
+              onChange={(e) => update('footer', 'copyright', e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+      </SiteContentSection>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Kalicilik uyarisi
 // ---------------------------------------------------------------------------
 function PersistenceBanner() {
@@ -1074,6 +1467,7 @@ function AdminPanel({ onLogout }) {
     { id: 'categories', label: 'Kategoriler', icon: Folder },
     { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
     { id: 'priceHistory', label: 'Fiyat Gecmisi', icon: BarChart3 },
+    { id: 'siteContent', label: 'Site Icerikleri', icon: FileText },
     { id: 'add', label: 'Urun Ekle', icon: Plus },
   ];
 
@@ -1083,6 +1477,7 @@ function AdminPanel({ onLogout }) {
     categories: ['Kategoriler', 'Urun kategorilerini yonetin.'],
     campaigns: ['Kampanyalar', 'Kampanyalarinizi yonetin.'],
     priceHistory: ['Fiyat Gecmisi', 'Fiyat degisikliklerini takip edin.'],
+    siteContent: ['Site Icerikleri', 'Ana sayfadaki metinleri duzenleyin.'],
     add: ['Urun Ekle', 'Yeni urun bilgilerini kaydedin.'],
     edit: ['Urun Duzenle', 'Mevcut urun bilgilerini guncelleyin.'],
   };
@@ -1163,6 +1558,7 @@ function AdminPanel({ onLogout }) {
           {view === 'categories' && <CategoriesPage />}
           {view === 'campaigns' && <CampaignsPage />}
           {view === 'priceHistory' && <PriceHistoryPage />}
+          {view === 'siteContent' && <SiteContentPage />}
           {view === 'add' && <ProductForm onCancel={() => navigate('products')} onSave={saveProduct} />}
           {view === 'edit' && editingProduct && (
             <ProductForm product={editingProduct} onCancel={() => navigate('products')} onSave={saveProduct} />

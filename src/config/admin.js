@@ -12,14 +12,16 @@
  *      Tarayıcı konsolunda çalıştırın:
  *      crypto.subtle.digest('SHA-256', new TextEncoder().encode('şifreniz'))
  *        .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
- *   2. .env dosyasındaki VITE_ADMIN_PASSWORD_HASH değerini güncelleyin.
+ *   2. Yayın için: GitHub repo secret'ı ADMIN_PASSWORD_HASH değerini güncelleyin
+ *      (Settings → Secrets and variables → Actions). Yerel geliştirme için .env
+ *      dosyasına VITE_ADMIN_PASSWORD_HASH yazın (.env git'e eklenmez, bkz. .env.example).
  *   3. Projeyi yeniden deploy edin.
  */
 export const adminUsername = 'admin';
 export const adminSessionKey = 'yapyapmatbaa_admin_session_v2';
 
 // Gerçek admin şifresi burada YOKTUR — yalnızca SHA-256 hash'i kullanılır.
-// .env dosyasında VITE_ADMIN_PASSWORD_HASH ile yapılandırın.
+// Yayında ADMIN_PASSWORD_HASH secret'ından, yerelde .env'den gelir.
 const configuredHash = import.meta.env.VITE_ADMIN_PASSWORD_HASH || null;
 
 /**

@@ -41,6 +41,8 @@ jobs:
 
       - name: React sitesini derle
         run: pnpm build
+        env:
+          VITE_ADMIN_PASSWORD_HASH: ${{ secrets.ADMIN_PASSWORD_HASH }}
 
       - name: GitHub Pages'i yapılandır
         uses: actions/configure-pages@v5

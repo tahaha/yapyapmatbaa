@@ -27,6 +27,10 @@ import {
   Printer,
   RotateCcw,
   Save,
+  Settings,
+  KeyRound,
+  GitBranch,
+  ExternalLink,
   Star,
   Tag,
   Trash2,
@@ -36,11 +40,22 @@ import {
   Users,
 } from 'lucide-react';
 import {
+  adminConfigPath,
   adminSessionKey,
-  adminUsername,
-  isAdminConfigured,
-  verifyAdminPassword,
+  loadAdminConfig,
+  verifyAdminCredentials,
 } from './config/admin.js';
+import { createPasswordRecord, validateNewPassword, verifyPasswordRecord } from './lib/passwordHash.js';
+import {
+  actionsUrl,
+  clearGitHubToken,
+  getGitHubSettings,
+  isGitHubConfigured,
+  readRepoFile,
+  saveGitHubSettings,
+  testGitHubConnection,
+  writeRepoFile,
+} from './lib/githubClient.js';
 import {
   campaignRepository,
   getActiveCampaigns,
@@ -138,13 +153,20 @@ function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [configured, setConfigured] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    loadAdminConfig().then((config) => { if (active) setConfigured(Boolean(config)); });
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const ok = username === adminUsername && (await verifyAdminPassword(password));
+      const ok = await verifyAdminCredentials(username.trim(), password);
       if (ok) {
         sessionStorage.setItem(adminSessionKey, 'authenticated');
         onLogin();
@@ -158,16 +180,16 @@ function Login({ onLogin }) {
     }
   };
 
-  if (!isAdminConfigured) {
+  if (configured === false) {
     return (
       <main className="hero-grid grid min-h-screen place-items-center bg-[#071b2b] px-5 py-10 text-white">
         <section className="w-full max-w-md rounded-[2rem] border border-red-400/20 bg-red-400/10 p-8 text-center">
           <AlertCircle className="mx-auto text-red-300" size={40} />
           <h1 className="mt-4 text-2xl font-black text-white">Admin Yapilandirilmamis</h1>
           <p className="mt-3 text-sm leading-6 text-red-200">
-            <code className="rounded bg-red-400/20 px-1.5 py-0.5 font-mono">VITE_ADMIN_PASSWORD_HASH</code> ortam
-            degiskeni ayarlanmamis. <br />
-            Projenin kok dizinindeki <code className="rounded bg-red-400/20 px-1.5 py-0.5 font-mono">.env</code>{' '}
+            <code className="rounded bg-red-400/20 px-1.5 py-0.5 font-mono">admin-config.json</code> dosyasi
+            okunamadi. <br />
+            Repodaki <code className="rounded bg-red-400/20 px-1.5 py-0.5 font-mono">{adminConfigPath}</code>{' '}
             dosyasini kontrol edin.
           </p>
         </section>
@@ -228,7 +250,7 @@ function Login({ onLogin }) {
           </button>
         </form>
         <p className="mt-6 text-center text-xs leading-5 text-slate-500">
-          Bu panel istemci tarafi SHA-256 dogrulamasi kullanir. Gercek guvenlik icin backend gereklidir.
+          Bu panel istemci tarafi sifre dogrulamasi kullanir. Gercek guvenlik icin backend gereklidir.
         </p>
       </section>
     </main>
@@ -1757,6 +1779,280 @@ function PersistenceBanner() {
 }
 
 // ---------------------------------------------------------------------------
+// Ayarlar: GitHub baglantisi + sifre degistirme
+// ---------------------------------------------------------------------------
+function SettingsCard({ icon: Icon, title, description, children }) {
+  return (
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-[0_10px_30px_rgba(7,27,43,.04)] sm:p-7">
+      <div className="flex items-start gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#17c964]/10 text-[#11984b]">
+          <Icon size={19} />
+        </span>
+        <div>
+          <h2 className="text-lg font-black tracking-[-0.03em] text-[#071b2b]">{title}</h2>
+          {description && <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>}
+        </div>
+      </div>
+      <div className="mt-6">{children}</div>
+    </section>
+  );
+}
+
+function StatusMessage({ status }) {
+  if (!status) return null;
+  const ok = status.type === 'success';
+  return (
+    <div
+      role={ok ? 'status' : 'alert'}
+      className={`mt-4 rounded-xl border px-3.5 py-3 text-sm leading-6 ${
+        ok ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-700'
+      }`}
+    >
+      {status.message}
+      {status.link && (
+        <a href={status.link.href} target="_blank" rel="noreferrer" className="ml-1 inline-flex items-center gap-1 font-extrabold underline">
+          {status.link.label} <ExternalLink size={13} />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function PasswordInput({ label, value, onChange, autoComplete, show }) {
+  return (
+    <label className={labelClass}>
+      {label}
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={fieldClass}
+        autoComplete={autoComplete}
+        required
+      />
+    </label>
+  );
+}
+
+function GitHubConnectionCard({ settings, onChange }) {
+  const [form, setForm] = useState(settings);
+  const [testing, setTesting] = useState(false);
+  const [status, setStatus] = useState(null);
+  const [showToken, setShowToken] = useState(false);
+  const connected = isGitHubConfigured(settings);
+
+  const update = (key) => (event) => setForm((f) => ({ ...f, [key]: event.target.value }));
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+    setTesting(true);
+    setStatus(null);
+    const next = { ...form, token: form.token.trim() };
+    try {
+      const info = await testGitHubConnection(next);
+      onChange(saveGitHubSettings(next));
+      setStatus({ type: 'success', message: `Baglanti basarili: ${info.fullName} reposuna yazma izni var.` });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Baglanti kurulamadi.' });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleClear = () => {
+    if (!window.confirm('Bu tarayicidaki GitHub token silinsin mi?')) return;
+    clearGitHubToken();
+    const next = getGitHubSettings();
+    setForm(next);
+    onChange(next);
+    setStatus({ type: 'success', message: 'Token bu tarayicidan silindi.' });
+  };
+
+  return (
+    <SettingsCard
+      icon={GitBranch}
+      title="GitHub baglantisi"
+      description="Panelin degisiklikleri kalici olarak kaydedebilmesi icin repoya yazma izni olan bir GitHub token gerekir. Token yalnizca bu tarayicida saklanir, repoya yazilmaz."
+    >
+      <div className="mb-5 flex items-center gap-2 text-sm font-bold">
+        <span className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-[#17c964]' : 'bg-slate-300'}`} />
+        {connected ? `Bagli: ${settings.owner}/${settings.repo} (${settings.branch})` : 'Bagli degil'}
+      </div>
+
+      <details className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+        <summary className="cursor-pointer font-extrabold text-[#102331]">Token nasil olusturulur?</summary>
+        <ol className="mt-3 list-decimal space-y-1 pl-5">
+          <li>
+            <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer" className="font-bold text-[#11984b] underline">
+              GitHub → Fine-grained token olustur
+            </a>{' '}
+            sayfasini acin.
+          </li>
+          <li>Bir ad ve sure (ornegin 1 yil) secin.</li>
+          <li><b>Repository access</b> → <b>Only select repositories</b> → <b>{form.repo || 'yapyapmatbaa'}</b>.</li>
+          <li><b>Permissions</b> → <b>Contents</b> → <b>Read and write</b>. Baska izin vermeyin.</li>
+          <li><b>Generate token</b> ile olusturup asagiya yapistirin.</li>
+        </ol>
+      </details>
+
+      <form onSubmit={handleSave} className="grid gap-4 sm:grid-cols-3">
+        <label className={labelClass}>
+          Kullanici / organizasyon
+          <input value={form.owner} onChange={update('owner')} className={fieldClass} required />
+        </label>
+        <label className={labelClass}>
+          Repo
+          <input value={form.repo} onChange={update('repo')} className={fieldClass} required />
+        </label>
+        <label className={labelClass}>
+          Dal (branch)
+          <input value={form.branch} onChange={update('branch')} className={fieldClass} required />
+        </label>
+        <label className={`${labelClass} sm:col-span-3`}>
+          Token
+          <span className="relative block">
+            <input
+              type={showToken ? 'text' : 'password'}
+              value={form.token}
+              onChange={update('token')}
+              placeholder="github_pat_..."
+              className={`${fieldClass} pr-12 font-mono`}
+              autoComplete="off"
+              spellCheck={false}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowToken((v) => !v)}
+              aria-label={showToken ? 'Tokeni gizle' : 'Tokeni goster'}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+            >
+              {showToken ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </span>
+        </label>
+        <div className="flex flex-wrap justify-end gap-2 sm:col-span-3">
+          {connected && (
+            <button type="button" onClick={handleClear} className={btnSecondary}>
+              <Trash2 size={16} /> Tokeni sil
+            </button>
+          )}
+          <button type="submit" disabled={testing} className={btnPrimary}>
+            <Check size={17} /> {testing ? 'Kontrol ediliyor...' : 'Kaydet ve test et'}
+          </button>
+        </div>
+      </form>
+      <StatusMessage status={status} />
+    </SettingsCard>
+  );
+}
+
+function ChangePasswordCard({ settings }) {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState(null);
+  const connected = isGitHubConfigured(settings);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setStatus(null);
+
+    const ruleError = validateNewPassword(next);
+    if (ruleError) return setStatus({ type: 'error', message: ruleError });
+    if (next !== confirm) return setStatus({ type: 'error', message: 'Yeni sifre ile tekrari ayni degil.' });
+    if (next === current) return setStatus({ type: 'error', message: 'Yeni sifre mevcut sifreyle ayni olamaz.' });
+
+    setSaving(true);
+    try {
+      // Mevcut sifreyi repodaki guncel dosyaya gore dogrula (yayindaki kopya birkac dakika eski olabilir).
+      const file = await readRepoFile(adminConfigPath, settings);
+      let config = null;
+      if (file) {
+        try { config = JSON.parse(file.content); } catch { config = null; }
+      }
+      const record = config?.password || (await loadAdminConfig({ force: true }))?.password;
+      if (!record || !(await verifyPasswordRecord(current, record))) {
+        setStatus({ type: 'error', message: 'Mevcut sifre hatali.' });
+        return;
+      }
+
+      const updated = {
+        $aciklama:
+          config?.$aciklama ||
+          'Admin giris ayarlari. Sifreyi admin panelindeki Ayarlar sayfasindan degistirin; bu dosyayi elle duzenlemeyin.',
+        username: config?.username || 'admin',
+        password: await createPasswordRecord(next),
+        updatedAt: new Date().toISOString(),
+      };
+      await writeRepoFile(
+        adminConfigPath,
+        `${JSON.stringify(updated, null, 2)}\n`,
+        'Admin sifresi guncellendi (admin paneli)',
+        settings,
+      );
+
+      setCurrent('');
+      setNext('');
+      setConfirm('');
+      setStatus({
+        type: 'success',
+        message:
+          'Sifre kaydedildi. Site yeniden yayinlaninca (genellikle 1-3 dakika) yeni sifre gecerli olur; o zamana kadar eski sifre calismaya devam eder.',
+        link: { href: actionsUrl(settings), label: 'Yayin durumunu gor' },
+      });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message || 'Sifre kaydedilemedi.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SettingsCard
+      icon={KeyRound}
+      title="Admin sifresini degistir"
+      description="Yeni sifre GitHub'a kaydedilir ve tum cihazlarda gecerli olur. En az 10 karakter, harf ve rakam icermeli."
+    >
+      {!connected && (
+        <p className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm leading-6 text-amber-800">
+          Sifre degistirmek icin once yukaridan GitHub baglantisini kurun.
+        </p>
+      )}
+      <form onSubmit={handleSubmit}>
+        <fieldset disabled={!connected || saving} className="grid gap-4 disabled:opacity-60 sm:grid-cols-3">
+          <PasswordInput label="Mevcut sifre" value={current} onChange={setCurrent} autoComplete="current-password" show={show} />
+          <PasswordInput label="Yeni sifre" value={next} onChange={setNext} autoComplete="new-password" show={show} />
+          <PasswordInput label="Yeni sifre (tekrar)" value={confirm} onChange={setConfirm} autoComplete="new-password" show={show} />
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-slate-600">
+              <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} className="h-4 w-4 accent-[#17c964]" />
+              Sifreleri goster
+            </label>
+            <button type="submit" className={btnPrimary}>
+              <Save size={17} /> {saving ? 'Kaydediliyor...' : 'Sifreyi degistir'}
+            </button>
+          </div>
+        </fieldset>
+      </form>
+      <StatusMessage status={status} />
+    </SettingsCard>
+  );
+}
+
+function SettingsPage() {
+  const [settings, setSettings] = useState(() => getGitHubSettings());
+  return (
+    <div className="space-y-6">
+      <GitHubConnectionCard settings={settings} onChange={setSettings} />
+      <ChangePasswordCard settings={settings} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Admin paneli (giris sonrasi)
 // ---------------------------------------------------------------------------
 function AdminPanel({ onLogout }) {
@@ -1775,6 +2071,7 @@ function AdminPanel({ onLogout }) {
     { id: 'reviews', label: 'Musteri Yorumlari', icon: MessageSquare },
     { id: 'instagram', label: 'Instagram / Galeri', icon: Camera },
     { id: 'add', label: 'Urun Ekle', icon: Plus },
+    { id: 'settings', label: 'Ayarlar', icon: Settings },
   ];
 
   const titles = {
@@ -1787,6 +2084,7 @@ function AdminPanel({ onLogout }) {
     reviews: ['Musteri Yorumlari', 'Musteri yorumlarini yonetin.'],
     instagram: ['Instagram / Galeri', 'Galeri gorsellerini yonetin.'],
     add: ['Urun Ekle', 'Yeni urun bilgilerini kaydedin.'],
+    settings: ['Ayarlar', 'Admin sifresini ve GitHub baglantisini yonetin.'],
     edit: ['Urun Duzenle', 'Mevcut urun bilgilerini guncelleyin.'],
   };
 
@@ -1869,6 +2167,7 @@ function AdminPanel({ onLogout }) {
           {view === 'siteContent' && <SiteContentPage />}
           {view === 'reviews' && <ReviewsAdminPage />}
           {view === 'instagram' && <InstagramAdminPage />}
+          {view === 'settings' && <SettingsPage />}
           {view === 'add' && <ProductForm onCancel={() => navigate('products')} onSave={saveProduct} />}
           {view === 'edit' && editingProduct && (
             <ProductForm product={editingProduct} onCancel={() => navigate('products')} onSave={saveProduct} />

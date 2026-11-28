@@ -1,0 +1,11 @@
+{
+  "$aciklama": "Admin giris ayarlari. Sifreyi admin panelindeki Ayarlar sayfasindan degistirin; bu dosyayi elle duzenlemeyin.",
+  "username": "admin",
+  "password": {
+    "algorithm": "PBKDF2-SHA256",
+    "iterations": 210000,
+    "salt": "4fe71d26299a03b3e9b8b47e44d85aa6",
+    "hash": "9403cae22586190512c6c2685605e1fe4be7ce5184b760f2aa6d90844b156393"
+  },
+  "updatedAt": "2026-11-28T11:45:35.102Z"
+}
